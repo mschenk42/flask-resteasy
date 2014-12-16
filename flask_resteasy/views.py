@@ -15,39 +15,42 @@ class APIView(MethodView):
         return self._cfg
 
     def get(self, ident=None, link=None):
-        parser = self.cfg.parser_factory.create(self, ident=ident, link=link)
-        processor = self.cfg.processor_factory.create(self, parser)
+        parser = self.cfg.parser_factory.create(self.cfg, ident=ident,
+                                                link=link)
+        processor = self.cfg.processor_factory.create(self.cfg, parser)
         if parser.link:
-            link_cls = self.cfg.api_manager.apis[parser.link]
-            builder = link_cls.cfg.builder_factory.create(link_cls, processor)
+            link_cfg = self.cfg.api_manager.get_cfg(parser.link)
+            builder = link_cfg.builder_factory.create(link_cfg, processor)
         else:
-            builder = self.cfg.builder_factory.create(self, processor)
+            builder = self.cfg.builder_factory.create(self.cfg, processor)
 
         return jsonify(builder.json_dic)
 
     def post(self):
-        parser = self.cfg.parser_factory.create(self)
-        processor = self.cfg.processor_factory.create(self, parser)
-        builder = self.cfg.builder_factory.create(self, processor)
+        parser = self.cfg.parser_factory.create(self.cfg)
+        processor = self.cfg.processor_factory.create(self.cfg, parser)
+        builder = self.cfg.builder_factory.create(self.cfg, processor)
         url = builder.urls[0] if len(builder.urls) == 1 else builder.urls
 
         return jsonify(builder.json_dic), 201, {'Location': url}
 
     def delete(self, ident=None, link=None):
-        parser = self.cfg.parser_factory.create(self, ident=ident, link=link)
-        self.cfg.processor_factory.create(self, parser)
+        parser = self.cfg.parser_factory.create(self.cfg, ident=ident,
+                                                link=link)
+        self.cfg.processor_factory.create(self.cfg, parser)
 
         return jsonify({})
 
     def put(self, ident=None, link=None):
-        parser = self.cfg.parser_factory.create(self, ident=ident, link=link)
-        processor = self.cfg.processor_factory.create(self, parser)
-        builder = self.cfg.builder_factory.create(self, processor)
+        parser = self.cfg.parser_factory.create(self.cfg, ident=ident,
+                                                link=link)
+        processor = self.cfg.processor_factory.create(self.cfg, parser)
+        builder = self.cfg.builder_factory.create(self.cfg, processor)
 
         return jsonify(builder.json_dic)
 
 
-class JSONConfig(object):
+class JSONAPIConfig(object):
     def __init__(self, model_class, app, db, api_manager):
         self._model = model_class
         self._app = app
@@ -163,25 +166,25 @@ class JSONConfig(object):
 
     @property
     def parser_factory(self):
-        return RequestParserFactory
+        return ParserFactory
 
     @property
     def processor_factory(self):
-        return RequestProcessorFactory
+        return ProcessorFactory
 
     @property
     def builder_factory(self):
-        return ResponseBuilderFactory
+        return BuilderFactory
 
 
-class EmberConfig(JSONConfig):
+class EmberConfig(JSONAPIConfig):
     @property
     def use_links(self):
         return False
 
 
 class APIManager(object):
-    def __init__(self, app, db, cfg_class=JSONConfig, decorators=None):
+    def __init__(self, app, db, cfg_class=JSONAPIConfig, decorators=None):
         self._app = None
         self._db = None
         self._model_for_resources = {}
@@ -203,7 +206,7 @@ class APIManager(object):
         self._model_for_resources[str(resource_singular.lower())] = model_class
         self._model_for_resources[str(resource_plural.lower())] = model_class
 
-    def get_view(self, resource_name):
+    def get_cfg(self, resource_name):
         return self._cfg_for_resources[str(resource_name.lower())]
 
     def get_model(self, resource_name):
@@ -220,19 +223,14 @@ class APIManager(object):
             cfg_class = kwargs['cfg_class']
         cfg = cfg_class(model_class, self._app, self._db, self, **kwargs)
 
-        self._register_cfg(cfg,
-                           cfg.resource_name,
-                           cfg.resource_name_plural)
-        self._register_model(model_class,
-                             cfg.resource_name,
+        self._register_cfg(cfg, cfg.resource_name, cfg.resource_name_plural)
+        self._register_model(model_class, cfg.resource_name,
                              cfg.resource_name_plural)
 
         reg_with = self._app if bp is None else bp
         url = '/%s' % cfg.resource_name_plural
 
-        view_func = APIView.as_view(cfg.endpoint_name,
-                                    cfg,
-                                    **kwargs)
+        view_func = APIView.as_view(cfg.endpoint_name, cfg, **kwargs)
 
         def reg_methods(meths):
             return [m for m in meths if m in for_methods]
@@ -262,8 +260,8 @@ class APIManager(object):
 
 
 class RequestParser(object):
-    def __init__(self, view, **kwargs):
-        self._view = view
+    def __init__(self, cfg, **kwargs):
+        self._cfg = cfg
         if 'ident' in kwargs and kwargs['ident'] is not None:
             self._idents = kwargs['ident'].split(',')
         else:
@@ -283,8 +281,8 @@ class RequestParser(object):
         return self._link
 
     def _parse(self):
-        assert self.link is None or self._view.cfg.to_model_tag(self.link) in \
-            self._view.cfg.links, 'invalid links resource url'
+        assert self.link is None or self._cfg.to_model_tag(self.link) in \
+            self._cfg.links, 'invalid links resource url'
 
         assert self.link is None or len(self.idents) > 0, \
             'invalid links resource url'
@@ -307,10 +305,10 @@ class PutRequestParser(RequestParser):
 
 
 class RequestProcessor(object):
-    def __init__(self, view, request_parser):
-        self._view = view
+    def __init__(self, cfg, request_parser):
+        self._cfg = cfg
         self._rp = request_parser
-        self._models = []
+        self._results = []
         self._render_as_list = False
         self._process()
 
@@ -319,8 +317,8 @@ class RequestProcessor(object):
         pass
 
     @property
-    def models(self):
-        return self._models
+    def results(self):
+        return self._results
 
     @property
     def render_as_list(self):
@@ -329,14 +327,14 @@ class RequestProcessor(object):
     @property
     def root_name(self):
         if self._rp.link is None:
-            return (self._view.cfg.resource_name_plural
-                    if self._render_as_list else self._view.cfg.resource_name)
+            return (self._cfg.resource_name_plural
+                    if self._render_as_list else self._cfg.resource_name)
         else:
             return self._rp.link
 
     def _all(self, model_class=None):
         if model_class is None:
-            model_class = self._view.cfg.model_class
+            model_class = self._cfg.model_class
         else:
             model_class = model_class
         return model_class.query.all()
@@ -344,7 +342,7 @@ class RequestProcessor(object):
     def _get_all(self, idents, model_class=None):
         models = []
         if model_class is None:
-            model_class = self._view.cfg.model_class
+            model_class = self._cfg.model_class
         else:
             model_class = model_class
         for i in idents:
@@ -353,36 +351,27 @@ class RequestProcessor(object):
 
     def _find(self, model_class=None, **kwargs):
         if model_class is None:
-            model_class = self._view.model_class
-        else:
-            model_class = model_class
-        return model_class.query.filter_by(**kwargs)
-
-    def _first(self, model_class=None, **kwargs):
-        if model_class is None:
-            model_class = self._view.model_class
+            model_class = self._cfg.model_class
         else:
             model_class = model_class
         return self._find(model_class, **kwargs).first()
 
     def _get_or_404(self, id, model_class=None):
         if model_class is None:
-            model_class = self._view.cfg.model_class
+            model_class = self._cfg.model_class
         else:
             model_class = model_class
         return model_class.query.get_or_404(id)
 
     def _copy(self, model, fields, field_defaults=None, model_class=None):
         if model_class is None:
-            model_class = self._view.model_class
+            model_class = self._cfg.model_class
         else:
             model_class = model_class
         field_defaults = field_defaults if field_defaults else {}
         model_copy = model_class()
         for field in fields:
-            setattr(model_copy,
-                    field,
-                    field_defaults[field]
+            setattr(model_copy, field, field_defaults[field]
                     if field in field_defaults else getattr(model, field))
         return model_copy
 
@@ -397,12 +386,12 @@ class RequestProcessor(object):
     def _json_to_model(self, j_dict, model):
 
         def _json_to_model_fields(j_dict_root):
-            for c in self._view.cfg.fields_to_model:
+            for c in self._cfg.fields_to_model:
                 if c in j_dict_root:
                     setattr(model, c, j_dict_root[c])
 
         def _json_to_model_links(j_dict_links):
-            for c in self._view.cfg.links:
+            for c in self._cfg.links:
                 if c in j_dict_links:
                     model_link = j_dict_links[c]
                     if model_link is None:
@@ -410,21 +399,19 @@ class RequestProcessor(object):
                     elif isinstance(model_link, list):
                         lst = self._get_all(
                             model_link,
-                            self._view.cfg.api_manager.get_model(c))
+                            self._cfg.api_manager.get_model(c))
                         getattr(model, c).extend(lst)
                     else:
-                        setattr(model,
-                                c,
+                        setattr(model, c,
                                 self._get_or_404(
                                     model_link,
-                                    self._view.cfg.api_manager.get_model(c)))
+                                    self._cfg.api_manager.get_model(c)))
 
         for root in j_dict:
             _json_to_model_fields(j_dict[root])
-            if self._view.cfg.use_links:
-                if self._view.cfg.links_keyword in j_dict[root]:
-                    _json_to_model_links(
-                        j_dict[root][self._view.cfg.links_keyword])
+            if self._cfg.use_links:
+                if self._cfg.links_keyword in j_dict[root]:
+                    _json_to_model_links(j_dict[root][self._cfg.links_keyword])
                 else:
                     _json_to_model_links(j_dict[root])
             else:
@@ -432,8 +419,8 @@ class RequestProcessor(object):
 
 
 class GetRequestProcessor(RequestProcessor):
-    def __init__(self, view, request_parser):
-        super(GetRequestProcessor, self).__init__(view, request_parser)
+    def __init__(self, cfg, request_parser):
+        super(GetRequestProcessor, self).__init__(cfg, request_parser)
 
     def _process(self):
         if len(self._rp.idents) > 0:
@@ -444,61 +431,60 @@ class GetRequestProcessor(RequestProcessor):
         if self._rp.link:
             assert len(r_objs) > 0, 'No parent resource found for links'
             for r_o in r_objs:
-                l_objs = getattr(r_o,
-                                 self._view.cfg.to_model_tag(self._rp.link))
+                l_objs = getattr(r_o, self._cfg.to_model_tag(self._rp.link))
                 if isinstance(l_objs, list):
                     self._render_as_list = True
-                    self._models.extend(l_objs)
+                    self._results.extend(l_objs)
                 else:
                     self._render_as_list = False
-                    self._models.append(l_objs)
+                    self._results.append(l_objs)
         else:
             self._render_as_list = len(self._rp.idents) != 1
-            self._models.extend(r_objs)
+            self._results.extend(r_objs)
 
 
 class DeleteRequestProcessor(RequestProcessor):
-    def __init__(self, view, request_parser):
-        super(DeleteRequestProcessor, self).__init__(view, request_parser)
+    def __init__(self, cfg, request_parser):
+        super(DeleteRequestProcessor, self).__init__(cfg, request_parser)
 
     def _process(self):
         for i in self._rp.idents:
             obj = self._get_or_404(i)
-            self._view.cfg.db.session.delete(obj)
-        self._view.cfg.db.session.commit()
+            self._cfg.db.session.delete(obj)
+        self._cfg.db.session.commit()
 
 
 class PostRequestProcessor(RequestProcessor):
-    def __init__(self, view, request_parser):
-        super(PostRequestProcessor, self).__init__(view, request_parser)
+    def __init__(self, cfg, request_parser):
+        super(PostRequestProcessor, self).__init__(cfg, request_parser)
 
     def _process(self):
         # todo - handle creating many models per post
         json = request.json
-        with self._view.cfg.db.session.no_autoflush:
-            model = self._view.cfg.model_class()
+        with self._cfg.db.session.no_autoflush:
+            model = self._cfg.model_class()
             self._json_to_model(json, model)
-        self._view.cfg.db.session.commit()
-        self._models.append(model)
+        self._cfg.db.session.commit()
+        self._results.append(model)
 
 
 class PutRequestProcessor(RequestProcessor):
-    def __init__(self, view, request_parser):
-        super(PutRequestProcessor, self).__init__(view, request_parser)
+    def __init__(self, cfg, request_parser):
+        super(PutRequestProcessor, self).__init__(cfg, request_parser)
 
     def _process(self):
         # todo - handle updating many models per put
         json = request.json
-        with self._view.cfg.db.session.no_autoflush:
+        with self._cfg.db.session.no_autoflush:
             model = self._get_or_404(self._rp.idents[0])
             self._json_to_model(json, model)
-        self._view.cfg.db.session.commit()
-        self.models.append(model)
+        self._cfg.db.session.commit()
+        self.results.append(model)
 
 
 class ResponseBuilder(object):
-    def __init__(self, view, request_processor):
-        self._api = view
+    def __init__(self, cfg, request_processor):
+        self._cfg = cfg
         self._rp = request_processor
         self._json_dic = None
         self._build()
@@ -509,16 +495,17 @@ class ResponseBuilder(object):
 
     @property
     def urls(self):
-        return self._get_urls_for(self._rp.models)
+        return self._get_urls_for(self._rp.results)
 
     def _build(self):
         json_dic = {self._rp.root_name: [] if self._rp.render_as_list else {}}
 
         if self._rp.render_as_list:
-            for model in self._rp.models:
+            for model in self._rp.results:
                 json_dic[self._rp.root_name].append(self._obj_to_dic(model))
         else:
-            json_dic[self._rp.root_name] = self._obj_to_dic(self._rp.models[0])
+            json_dic[self._rp.root_name] = self._obj_to_dic(
+                self._rp.results[0])
 
         self._json_dic = json_dic
 
@@ -531,10 +518,10 @@ class ResponseBuilder(object):
         dic = {}
         convert = {"DATETIME": datetime.datetime.isoformat}
         if obj is not None:
-            for field_name in self._api.cfg.fields_to_json:
-                field_name_key = self._api.cfg.to_json_tag(field_name)
+            for field_name in self._cfg.fields_to_json:
+                field_name_key = self._cfg.to_json_tag(field_name)
                 v = getattr(obj, field_name)
-                current_type = self._api.cfg.field_types[field_name]
+                current_type = self._cfg.field_types[field_name]
                 if current_type in convert and v is not None:
                     dic[field_name_key] = convert[current_type](v)
                 else:
@@ -542,32 +529,31 @@ class ResponseBuilder(object):
         return dic
 
     def _set_link(self, dic, link_key, link_obj):
-        if self._api.cfg.use_links:
-            if self._api.cfg.links_keyword not in dic:
-                dic[self._api.cfg.links_keyword] = {}
-            dic[self._api.cfg.links_keyword][link_key] = link_obj
+        if self._cfg.use_links:
+            if self._cfg.links_keyword not in dic:
+                dic[self._cfg.links_keyword] = {}
+            dic[self._cfg.links_keyword][link_key] = link_obj
         else:
             dic[link_key] = link_obj
 
     def _obj_links_to_dic(self, obj):
         dic = {}
         if obj is not None:
-            links = self._api.cfg.links
+            links = self._cfg.links
             dic = {}
             for link in links:
-                link_key = self._api.cfg.to_json_tag(link)
+                link_key = self._cfg.to_json_tag(link)
                 linked_obj = getattr(obj, link)
                 if isinstance(linked_obj, list):
                     l_lst = []
                     for l_item in linked_obj:
-                        l_lst.append(getattr(l_item, self._api.cfg.id_keyword))
+                        l_lst.append(getattr(l_item, self._cfg.id_keyword))
                     self._set_link(dic, link_key, l_lst)
                 else:
                     if linked_obj:
-                        self._set_link(
-                            dic,
-                            link_key,
-                            getattr(linked_obj, self._api.cfg.id_keyword))
+                        self._set_link(dic, link_key,
+                                       getattr(linked_obj,
+                                               self._cfg.id_keyword))
                     else:
                         self._set_link(dic, link_key, None)
         return dic
@@ -582,33 +568,33 @@ class ResponseBuilder(object):
         return urls
 
 
-class RequestParserFactory(object):
+class ParserFactory(object):
     @staticmethod
-    def create(view, **kwargs):
+    def create(cfg, **kwargs):
         if request.method == 'GET':
-            return GetRequestParser(view, **kwargs)
+            return GetRequestParser(cfg, **kwargs)
         elif request.method == 'POST':
-            return PostRequestParser(view, **kwargs)
+            return PostRequestParser(cfg, **kwargs)
         elif request.method == 'DELETE':
-            return DeleteRequestParser(view, **kwargs)
+            return DeleteRequestParser(cfg, **kwargs)
         elif request.method == 'PUT':
-            return PutRequestParser(view, **kwargs)
+            return PutRequestParser(cfg, **kwargs)
 
 
-class RequestProcessorFactory(object):
+class ProcessorFactory(object):
     @staticmethod
-    def create(view, request_parser):
+    def create(cfg, request_parser):
         if request.method == 'GET':
-            return GetRequestProcessor(view, request_parser)
+            return GetRequestProcessor(cfg, request_parser)
         elif request.method == 'POST':
-            return PostRequestProcessor(view, request_parser)
+            return PostRequestProcessor(cfg, request_parser)
         elif request.method == 'DELETE':
-            return DeleteRequestProcessor(view, request_parser)
+            return DeleteRequestProcessor(cfg, request_parser)
         elif request.method == 'PUT':
-            return PutRequestProcessor(view, request_parser)
+            return PutRequestProcessor(cfg, request_parser)
 
 
-class ResponseBuilderFactory(object):
+class BuilderFactory(object):
     @staticmethod
-    def create(view, response_builder):
-        return ResponseBuilder(view, response_builder)
+    def create(cfg, response_builder):
+        return ResponseBuilder(cfg, response_builder)
