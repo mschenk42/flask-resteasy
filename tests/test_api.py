@@ -5,20 +5,15 @@ import json
 from flask import Flask
 from flask.ext.sqlalchemy import SQLAlchemy
 
-from flask_resteasy.views import APIView, APIConfig, APIManager
+from flask_resteasy.views import APIManager, EmberConfig
 
 
-db = SQLAlchemy()
 basedir = os.path.abspath(os.path.dirname(__file__))
-
-USE_TOKEN_AUTH = False
-TESTING = True
-SECRET_KEY = 'secret'
-SQLALCHEMY_DATABASE_URI = 'sqlite:///' + \
-                          os.path.join(basedir, 'data-test.sqlite')
-
 app = Flask(__name__)
-app.config.from_object(__name__)
+app.config['TESTING'] = True
+app.config['SQLALCHEMY_DATABASE_URI'] = \
+    'sqlite:///' + os.path.join(basedir, 'data-test.sqlite')
+db = SQLAlchemy(app)
 
 
 class Distributor(db.Model):
@@ -42,33 +37,20 @@ class Product(db.Model):
     max_order_qty = db.Column(db.Integer)
     reorder_level = db.Column(db.Integer)
     reorder_qty = db.Column(db.Integer)
-
     distributor_id = db.Column(db.Integer,
                                db.ForeignKey('distributors.id'),
                                nullable=False)
     distributor = db.relationship('Distributor',
-
                                   backref=db.backref(__tablename__))
 
 
-class ProductAPI(APIView):
-    @classmethod
-    def create_cfg(cls, app, db):
-        return APIConfig(Product, app, db)
-
-
-class DistributorAPI(APIView):
-    @classmethod
-    def create_cfg(cls, app, db):
-        return APIConfig(Distributor, app, db)
-
-
-APIManager.load(app, db, [ProductAPI, DistributorAPI])
+api_manager = APIManager(app, db, cfg_class=EmberConfig)
+api_manager.register_api(Product)
+api_manager.register_api(Distributor)
 
 
 class TestAPI(unittest.TestCase):
     def create_db(self):
-        db.init_app(app)
         db.drop_all()
         db.create_all()
         self.load_data()
@@ -130,7 +112,7 @@ class TestAPI(unittest.TestCase):
     def test_get_all_products(self):
         with self.client as c:
             rv = c.get(self.get_url('/products'), headers=self.get_headers())
-            j = json.loads(rv.data)
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue(rv.status_code == 200)
             self.assertTrue('products' in j)
             self.assertTrue(len(j['products']) == 2)
@@ -138,7 +120,7 @@ class TestAPI(unittest.TestCase):
     def test_get_product(self):
         with self.client as c:
             rv = c.get(self.get_url('/products/1'), headers=self.get_headers())
-            j = json.loads(rv.data)
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue(rv.status_code == 200)
             self.assertTrue('product' in j)
             self.assertTrue(isinstance(j['product'], dict))
@@ -153,7 +135,7 @@ class TestAPI(unittest.TestCase):
         with self.client as c:
             rv = c.get(self.get_url('/products/1,2'),
                        headers=self.get_headers())
-            j = json.loads(rv.data)
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue(rv.status_code == 200)
             self.assertTrue('products' in j)
             self.assertTrue(len(j['products']) == 2)
@@ -181,7 +163,7 @@ class TestAPI(unittest.TestCase):
         with self.client as c:
             rv = c.post(self.get_url('/products'), data=json.dumps(p_json),
                         headers=self.get_headers())
-            j = json.loads(rv.data)
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue(rv.status_code == 201)
             self.assertTrue(
                 ('Location', self.get_url('/products/3')) == rv.headers[2])
