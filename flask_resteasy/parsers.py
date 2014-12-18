@@ -37,7 +37,7 @@ class RequestParser(object):
         return self._filter
 
     @property
-    def order_by(self):
+    def sort_by(self):
         return self._sort
 
     def _parse(self, **kwargs):

@@ -34,8 +34,8 @@ class RequestProcessor(object):
         query = model_class.query
         if self._rp.filter:
             query = query.filter_by(**self._rp.filter)
-        if self._rp.order_by:
-            for col, order in self._rp.order_by.items():
+        if self._rp.sort_by:
+            for col, order in self._rp.sort_by.items():
                 fld = getattr(getattr(model_class, col), order)()
                 query = query.order_by(fld)
         return query
