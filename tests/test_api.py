@@ -1,3 +1,11 @@
+# coding: utf-8
+"""
+    tests.test_api
+    ~~~~~~~~~~~~~~
+
+    :copyright: (c) 2014 by Michael Schenk.
+    :license: MIT, see LICENSE for more details
+"""
 import unittest
 import os
 import json
@@ -5,10 +13,11 @@ import json
 from flask import Flask
 from flask.ext.sqlalchemy import SQLAlchemy
 
-from flask_resteasy.views import APIManager, JSONAPIConfig, EmberConfig
+from flask_resteasy.views import APIManager
+from flask_resteasy.configs import JSONAPIConfig, EmberConfig
 
 
-ap = None
+app = None
 db = SQLAlchemy()
 
 
@@ -118,7 +127,7 @@ class TestJSONAPI(TestAPI):
         api_manager.register_api(TestAPI.Product)
         api_manager.register_api(TestAPI.Distributor)
 
-    def test_get_distributor_relationship(self):
+    def test_get_relationship(self):
         with self.client as c:
             rv = c.get(self.get_url('/products/1/links/distributor'),
                        headers=self.get_headers())
@@ -127,7 +136,7 @@ class TestJSONAPI(TestAPI):
             self.assertTrue('distributor' in j)
             self.assertTrue(isinstance(j['distributor'], dict))
 
-    def test_get_all_products(self):
+    def test_get_all(self):
         with self.client as c:
             rv = c.get(self.get_url('/products'), headers=self.get_headers())
             j = json.loads(rv.data.decode(encoding='UTF-8'))
@@ -135,7 +144,7 @@ class TestJSONAPI(TestAPI):
             self.assertTrue('products' in j)
             self.assertTrue(len(j['products']) == 2)
 
-    def test_get_product(self):
+    def test_get(self):
         with self.client as c:
             rv = c.get(self.get_url('/products/1'), headers=self.get_headers())
             j = json.loads(rv.data.decode(encoding='UTF-8'))
@@ -143,13 +152,13 @@ class TestJSONAPI(TestAPI):
             self.assertTrue('product' in j)
             self.assertTrue(isinstance(j['product'], dict))
 
-    def test_get_product_not_found(self):
+    def test_get_not_found(self):
         with self.client as c:
             rv = c.get(self.get_url('/products/100'),
                        headers=self.get_headers())
             self.assertTrue(rv.status_code == 404)
 
-    def test_get_multiple_product(self):
+    def test_get_multiple(self):
         with self.client as c:
             rv = c.get(self.get_url('/products/1,2'),
                        headers=self.get_headers())
@@ -158,7 +167,7 @@ class TestJSONAPI(TestAPI):
             self.assertTrue('products' in j)
             self.assertTrue(len(j['products']) == 2)
 
-    def test_post_product(self):
+    def test_post(self):
         p_json = {
             "product": {
                 "distributor_code": "SYSCO",
@@ -189,7 +198,7 @@ class TestJSONAPI(TestAPI):
                 j['product']['description'] ==
                 "Organic green lettuce from the state of CA")
 
-    def test_put_product(self):
+    def test_put(self):
         p_json = {
             "product": {
                 "name": "Greenest Lettuce",
@@ -201,13 +210,46 @@ class TestJSONAPI(TestAPI):
                        headers=self.get_headers())
             self.assertTrue(rv.status_code == 200)
 
-    def test_delete_product(self):
+    def test_delete(self):
         with self.client as c:
             rv = c.delete(self.get_url('/products/1'),
                           headers=self.get_headers())
             self.assertTrue(rv.status_code == 200)
             rv = c.get(self.get_url('/products/1'), headers=self.get_headers())
             self.assertTrue(rv.status_code == 404)
+
+    def test_filter(self):
+        with self.client as c:
+            rv = c.get(self.get_url('/products'),
+                       headers=self.get_headers(),
+                       query_string={'filter': 'name::Green Lettuce'})
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
+            self.assertTrue(rv.status_code == 200)
+            self.assertTrue('products' in j)
+            self.assertTrue(j['products'][0]['name'] == 'Green Lettuce')
+            self.assertTrue(len(j['products']) == 1)
+
+    def test_sort_desc(self):
+        with self.client as c:
+            rv = c.get(self.get_url('/products'),
+                       headers=self.get_headers(),
+                       query_string={'sort': '-name'})
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
+            self.assertTrue(rv.status_code == 200)
+            self.assertTrue('products' in j)
+            self.assertTrue(j['products'][0]['name'] == 'Red Leaf Lettuce')
+            self.assertTrue(len(j['products']) == 2)
+
+    def test_sort_asc(self):
+        with self.client as c:
+            rv = c.get(self.get_url('/products'),
+                       headers=self.get_headers(),
+                       query_string={'sort': 'name'})
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
+            self.assertTrue(rv.status_code == 200)
+            self.assertTrue('products' in j)
+            self.assertTrue(j['products'][0]['name'] == 'Green Lettuce')
+            self.assertTrue(len(j['products']) == 2)
 
 
 class TestEmberAPI(TestJSONAPI):
@@ -218,7 +260,7 @@ class TestEmberAPI(TestJSONAPI):
         api_manager.register_api(TestAPI.Product)
         api_manager.register_api(TestAPI.Distributor)
 
-    def test_get_distributor_relationship(self):
+    def test_get_relationship(self):
         with self.client as c:
             rv = c.get(self.get_url('/products/1/distributor'),
                        headers=self.get_headers())
