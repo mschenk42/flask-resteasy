@@ -1,5 +1,7 @@
-import datetime
+# coding=utf-8
 from flask import request
+
+from .constants import LINKS_NODE
 
 
 class ResponseBuilder(object):
@@ -37,10 +39,10 @@ class ResponseBuilder(object):
 
     def _obj_fields_to_dic(self, obj):
         dic = {}
-        convert = {"DATETIME": datetime.datetime.isoformat}
+        convert = self._cfg.to_json_converters
         if obj is not None:
             for field_name in self._cfg.fields_to_json:
-                field_name_key = self._cfg.to_json_tag(field_name)
+                field_name_key = self._cfg.to_json_node(field_name)
                 v = getattr(obj, field_name)
                 current_type = self._cfg.field_types[field_name]
                 if current_type in convert and v is not None:
@@ -50,36 +52,37 @@ class ResponseBuilder(object):
         return dic
 
     def _set_link(self, dic, link_key, link_obj):
-        if self._cfg.use_links:
-            if self._cfg.links_keyword not in dic:
-                dic[self._cfg.links_keyword] = {}
-            dic[self._cfg.links_keyword][link_key] = link_obj
+        if self._cfg.use_link_nodes:
+            if LINKS_NODE not in dic:
+                dic[LINKS_NODE] = {}
+            dic[LINKS_NODE][link_key] = link_obj
         else:
             dic[link_key] = link_obj
 
     def _obj_links_to_dic(self, obj):
         dic = {}
         if obj is not None:
-            links = self._cfg.links
+            links = self._cfg.relationships
             dic = {}
             for link in links:
-                link_key = self._cfg.to_json_tag(link)
+                link_key = self._cfg.to_json_node(link)
                 linked_obj = getattr(obj, link)
                 if isinstance(linked_obj, list):
                     l_lst = []
                     for l_item in linked_obj:
-                        l_lst.append(getattr(l_item, self._cfg.id_keyword))
+                        l_lst.append(getattr(l_item, self._cfg.id_field))
                     self._set_link(dic, link_key, l_lst)
                 else:
                     if linked_obj:
                         self._set_link(dic, link_key,
                                        getattr(linked_obj,
-                                               self._cfg.id_keyword))
+                                               self._cfg.id_field))
                     else:
                         self._set_link(dic, link_key, None)
         return dic
 
-    def _get_urls_for(self, objs):
+    @staticmethod
+    def _get_urls_for(objs):
         urls = []
         if isinstance(objs, list):
             for o in objs:

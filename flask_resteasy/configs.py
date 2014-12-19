@@ -1,3 +1,6 @@
+# coding=utf-8
+import datetime
+
 from inflection import underscore, camelize, singularize, pluralize
 
 from .parsers import ParserFactory
@@ -29,16 +32,16 @@ class JSONAPIConfig(object):
         return self._api_manager
 
     @property
-    def to_model_tag(self):
+    def to_model_field(self):
         return lambda s: underscore(s)
 
     @property
-    def to_json_tag(self):
+    def to_json_node(self):
         return lambda s: camelize(s, False)
 
     @property
-    def resource_name_converter(self):
-        return lambda s: camelize(s, False)
+    def to_json_converters(self):
+        return {"DATETIME": datetime.datetime.isoformat}
 
     @property
     def field_names(self, exclude=None):
@@ -51,9 +54,13 @@ class JSONAPIConfig(object):
                 for c in self.model_class.__table__.columns}
 
     @property
-    def linked_fields(self):
+    def relationship_fields(self):
         return set([n for n in self.field_names if
-                    n.endswith(self.link_id_postfix)])
+                    n.endswith(self.relationship_field_id_postfix)])
+
+    @property
+    def resource_name_converter(self):
+        return lambda s: camelize(s, False)
 
     @property
     def resource_name(self):
@@ -67,11 +74,12 @@ class JSONAPIConfig(object):
     @property
     def fields_to_model(self):
         return (self.field_names - self.private_fields -
-                self.linked_fields - {self.id_keyword})
+                self.relationship_fields - {self.id_field})
 
     @property
     def fields_to_json(self):
-        return self.field_names - self.private_fields - self.linked_fields
+        return self.field_names - self.private_fields - \
+            self.relationship_fields
 
     @property
     def private_fields(self):
@@ -83,32 +91,24 @@ class JSONAPIConfig(object):
         return ''.join([self.resource_name, self.endpoint_postfix])
 
     @property
-    def links(self):
+    def relationships(self):
         return set([n for n in self.model_class._sa_class_manager
                     if n not in self.field_names])
 
     @property
-    def links_keyword(self):
-        return 'links'
-
-    @property
-    def use_links(self):
+    def use_link_nodes(self):
         return True
 
     @property
-    def id_keyword(self):
+    def id_field(self):
         return 'id'
-
-    @property
-    def linked_keyword(self):
-        return 'linked'
 
     @property
     def endpoint_postfix(self):
         return '_api'
 
     @property
-    def link_id_postfix(self):
+    def relationship_field_id_postfix(self):
         return '_id'
 
     @property
@@ -130,5 +130,5 @@ class JSONAPIConfig(object):
 
 class EmberConfig(JSONAPIConfig):
     @property
-    def use_links(self):
+    def use_link_nodes(self):
         return False

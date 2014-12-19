@@ -1,8 +1,11 @@
+# coding=utf-8
 from flask.views import MethodView
 
 from flask import jsonify
 
 from .configs import JSONAPIConfig
+from .constants import HTTP_METHODS, LINKS_NODE, LINK_ROUTE_PARAM
+from .constants import ID_ROUTE_PARAM
 
 
 class APIView(MethodView):
@@ -78,10 +81,10 @@ class APIManager(object):
     def get_model(self, resource_name):
         return self._model_for_resources[str(resource_name.lower())]
 
-    def register_api(self, model_class, for_methods=None, bp=None, **kwargs):
+    def register_api(self, model_class, reg_methods=None, bp=None, **kwargs):
 
-        if for_methods is None:
-            for_methods = ['GET', 'POST', 'PUT', 'DELETE']
+        if reg_methods is None:
+            reg_methods = HTTP_METHODS
 
         if 'cfg_class' not in kwargs:
             cfg_class = self._cfg_class
@@ -98,28 +101,28 @@ class APIManager(object):
 
         view_func = APIView.as_view(cfg.endpoint_name, cfg, **kwargs)
 
-        def reg_methods(meths):
-            return [m for m in meths if m in for_methods]
-
-        methods = reg_methods(['GET', 'POST'])
-        if len(methods) > 0:
+        methods = list({'GET', 'POST'}.intersection(reg_methods))
+        if methods is not None:
             reg_with.add_url_rule(url,
                                   view_func=view_func,
                                   methods=methods)
 
-        methods = reg_methods(['GET', 'PUT', 'DELETE'])
-        if len(methods) > 0:
-            reg_with.add_url_rule('%s/<ident>' % url,
+        methods = list({'GET', 'PUT', 'DELETE'}.intersection(reg_methods))
+        if methods is not None:
+            reg_with.add_url_rule('%s/<%s>' % (url, ID_ROUTE_PARAM),
                                   view_func=view_func,
                                   methods=methods)
 
-        methods = reg_methods(['GET'])
-        if len(methods) > 0:
-            if cfg.use_links:
-                    reg_with.add_url_rule('%s/<ident>/links/<link>' % url,
+        methods = list({'GET'}.intersection(reg_methods))
+        if methods is not None:
+            if cfg.use_link_nodes:
+                    reg_with.add_url_rule('%s/<%s>/%s/<%s>' %
+                                          (url, ID_ROUTE_PARAM, LINKS_NODE,
+                                           LINK_ROUTE_PARAM),
                                           view_func=view_func,
                                           methods=methods)
             else:
-                reg_with.add_url_rule('%s/<ident>/<link>' % url,
+                reg_with.add_url_rule('%s/<%s>/<%s>' % (url, ID_ROUTE_PARAM,
+                                                        LINK_ROUTE_PARAM),
                                       view_func=view_func,
                                       methods=methods)

@@ -1,5 +1,8 @@
+# coding=utf-8
 from abc import abstractmethod
 from flask import request
+
+from .constants import LINKS_NODE
 
 
 class RequestProcessor(object):
@@ -57,12 +60,12 @@ class RequestProcessor(object):
             models.append(self._get_or_404(i, model_class))
         return models
 
-    def _get_or_404(self, id, model_class=None):
+    def _get_or_404(self, ident, model_class=None):
         if model_class is None:
             model_class = self._cfg.model_class
         else:
             model_class = model_class
-        return model_class.query.get_or_404(id)
+        return model_class.query.get_or_404(ident)
 
     def _copy(self, model, fields, field_defaults=None, model_class=None):
         if model_class is None:
@@ -92,7 +95,7 @@ class RequestProcessor(object):
                     setattr(model, c, j_dict_root[c])
 
         def _json_to_model_links(j_dict_links):
-            for c in self._cfg.links:
+            for c in self._cfg.relationships:
                 if c in j_dict_links:
                     model_link = j_dict_links[c]
                     if model_link is None:
@@ -110,9 +113,9 @@ class RequestProcessor(object):
 
         for root in j_dict:
             _json_to_model_fields(j_dict[root])
-            if self._cfg.use_links:
-                if self._cfg.links_keyword in j_dict[root]:
-                    _json_to_model_links(j_dict[root][self._cfg.links_keyword])
+            if self._cfg.use_link_nodes:
+                if LINKS_NODE in j_dict[root]:
+                    _json_to_model_links(j_dict[root][LINKS_NODE])
                 else:
                     _json_to_model_links(j_dict[root])
             else:
@@ -132,7 +135,7 @@ class GetRequestProcessor(RequestProcessor):
         if self._rp.link:
             assert len(r_objs) > 0, 'No parent resource found for links'
             for r_o in r_objs:
-                l_objs = getattr(r_o, self._cfg.to_model_tag(self._rp.link))
+                l_objs = getattr(r_o, self._cfg.to_model_field(self._rp.link))
                 self._render_as_list = isinstance(l_objs, list)
                 if self._render_as_list:
                     self._results.extend(l_objs)

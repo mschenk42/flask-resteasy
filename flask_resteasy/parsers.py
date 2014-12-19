@@ -1,9 +1,8 @@
+# coding=utf-8
 from flask import request
 
-FILTER_KEY = 'filter'
-SORT_KEY = 'sort'
-ID_PARAM = 'ident'
-LINK_PARAM = 'link'
+from .constants import ID_ROUTE_PARAM, FILTER_QP, SORT_QP
+from .constants import LINK_ROUTE_PARAM
 
 
 class ParserFactory(object):
@@ -43,29 +42,29 @@ class RequestParser(object):
     def _parse(self, **kwargs):
 
         # parse route params
-        if ID_PARAM in kwargs and kwargs[ID_PARAM] is not None:
-            self._idents = kwargs[ID_PARAM].split(',')
+        if ID_ROUTE_PARAM in kwargs and kwargs[ID_ROUTE_PARAM] is not None:
+            self._idents = kwargs[ID_ROUTE_PARAM].split(',')
         else:
             self._idents = []
 
-        if LINK_PARAM in kwargs and kwargs[LINK_PARAM] is not None:
-            self._link = kwargs[LINK_PARAM]
+        if LINK_ROUTE_PARAM in kwargs and kwargs[LINK_ROUTE_PARAM] is not None:
+            self._link = kwargs[LINK_ROUTE_PARAM]
         else:
             self._link = None
 
         # parse query params
-        if FILTER_KEY in request.args and request.args[FILTER_KEY] is not None:
-            self._filter = self.parse_filter(request.args[FILTER_KEY])
+        if FILTER_QP in request.args and request.args[FILTER_QP] is not None:
+            self._filter = self.parse_filter(request.args[FILTER_QP])
         else:
             self._filter = None
 
-        if SORT_KEY in request.args and request.args[SORT_KEY] is not None:
-            self._sort = self.parse_sort(request.args[SORT_KEY])
+        if SORT_QP in request.args and request.args[SORT_QP] is not None:
+            self._sort = self.parse_sort(request.args[SORT_QP])
         else:
             self._sort = None
 
-        assert self.link is None or self._cfg.to_model_tag(self.link) in \
-            self._cfg.links, 'invalid links resource url'
+        assert self.link is None or self._cfg.to_model_field(self.link) in \
+            self._cfg.relationships, 'invalid links resource url'
 
         assert self.link is None or len(self.idents) > 0, \
             'invalid links resource url'
