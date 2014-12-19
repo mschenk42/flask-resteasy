@@ -34,18 +34,36 @@ class ResponseBuilder(object):
 
     @property
     def urls(self):
-        return self._get_urls_for(self._rp.results)
+        return self._get_urls_for(self._rp.parents)
 
     def _build(self):
         json_dic = {self._rp.root_name: [] if self._rp.render_as_list else {}}
 
         if self._rp.render_as_list:
-            for model in self._rp.results:
+            for model in self._rp.parents:
                 json_dic[self._rp.root_name].append(self._obj_to_dic(model))
         else:
-            if len(self._rp.results) > 0:
+            if len(self._rp.parents) > 0:
                 json_dic[self._rp.root_name] = self._obj_to_dic(
-                    self._rp.results[0])
+                    self._rp.parents[0])
+
+        for link in self._rp.includes:
+            use_links = self._cfg.use_link_nodes
+            # switch cfg temporarily to the link object's configuration
+            # this is borderline hackish
+            parent_cfg = self._cfg
+            try:
+                self._cfg = self._cfg.api_manager.get_cfg(link)
+                for obj in self._rp.includes[link]:
+                    rv = self._obj_to_dic(obj)
+                    if use_links:
+                        if self._cfg.linked_node not in json_dic:
+                            json_dic[self._cfg.linked_node] = {}
+                        json_dic[self._cfg.linked_node][link] = rv
+                    else:
+                        json_dic[link] = rv
+            finally:
+                self._cfg = parent_cfg
 
         self._json_dic = json_dic
 

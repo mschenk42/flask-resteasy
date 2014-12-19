@@ -20,13 +20,15 @@
 """
 from abc import abstractmethod
 from flask import request
+from inflection import pluralize
 
 
 class RequestProcessor(object):
     def __init__(self, cfg, request_parser):
         self._cfg = cfg
         self._rp = request_parser
-        self._results = []
+        self._parents = []
+        self._includes = {}
         self._render_as_list = False
         self._process()
 
@@ -35,12 +37,16 @@ class RequestProcessor(object):
         pass
 
     @property
-    def results(self):
-        return self._results
+    def parents(self):
+        return self._parents
 
     @property
     def render_as_list(self):
         return self._render_as_list
+
+    @property
+    def includes(self):
+        return self._includes
 
     @property
     def root_name(self):
@@ -155,12 +161,34 @@ class GetRequestProcessor(RequestProcessor):
                 l_objs = getattr(r_o, self._cfg.to_model_field(self._rp.link))
                 self._render_as_list = isinstance(l_objs, list)
                 if self._render_as_list:
-                    self._results.extend(l_objs)
+                    self._parents.extend(l_objs)
                 else:
-                    self._results.append(l_objs)
+                    self._parents.append(l_objs)
+                self._process_includes_for(l_objs)
         else:
+            self._process_includes_for(r_objs)
             self._render_as_list = len(self._rp.idents) != 1
-            self._results.extend(r_objs)
+            self._parents.extend(r_objs)
+
+    def _process_includes_for(self, obj):
+        # todo add to config ability to exclude relationships in config?
+
+        def set_include(parent_obj, include):
+            if hasattr(parent_obj, include):
+                k = pluralize(include)
+                if include not in self._includes:
+                    self._includes[k] = []
+                self._includes[k].append(getattr(parent_obj, include))
+
+        if self._rp.include:
+            for include in self._rp.include:
+                if include not in self._cfg.relationships:
+                    continue
+                if isinstance(obj, list):
+                    for o in obj:
+                        set_include(o, include)
+                else:
+                    set_include(obj, include)
 
 
 class DeleteRequestProcessor(RequestProcessor):
@@ -185,7 +213,7 @@ class PostRequestProcessor(RequestProcessor):
             model = self._cfg.model_class()
             self._json_to_model(json, model)
         self._cfg.db.session.commit()
-        self._results.append(model)
+        self._parents.append(model)
 
 
 class PutRequestProcessor(RequestProcessor):
@@ -199,4 +227,4 @@ class PutRequestProcessor(RequestProcessor):
             model = self._get_or_404(self._rp.idents[0])
             self._json_to_model(json, model)
         self._cfg.db.session.commit()
-        self.results.append(model)
+        self.parents.append(model)

@@ -234,7 +234,7 @@ class TestJSONAPI(TestAPI):
         with self.client as c:
             rv = c.get(self.get_url('/products'),
                        headers=self.get_headers(),
-                       query_string={'filter': 'name::Green Lettuce'})
+                       query_string={'filter': 'name:Green Lettuce'})
             j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue(rv.status_code == 200)
             self.assertTrue('products' in j)
@@ -263,6 +263,16 @@ class TestJSONAPI(TestAPI):
             self.assertTrue(j['products'][0]['name'] == 'Green Lettuce')
             self.assertTrue(len(j['products']) == 2)
 
+    def test_include(self):
+        with self.client as c:
+            rv = c.get(self.get_url('/products'),
+                       headers=self.get_headers(),
+                       query_string={'include': 'distributor'})
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
+            self.assertTrue(rv.status_code == 200)
+            self.assertTrue('linked' in j)
+            self.assertTrue('distributors' in j['linked'])
+
 
 class TestEmberAPI(TestJSONAPI):
     @classmethod
@@ -280,3 +290,12 @@ class TestEmberAPI(TestJSONAPI):
             self.assertTrue(rv.status_code == 200)
             self.assertTrue('distributor' in j)
             self.assertTrue(isinstance(j['distributor'], dict))
+
+    def test_include(self):
+        with self.client as c:
+            rv = c.get(self.get_url('/products'),
+                       headers=self.get_headers(),
+                       query_string={'include': 'distributor'})
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
+            self.assertTrue(rv.status_code == 200)
+            self.assertTrue('distributors' in j)

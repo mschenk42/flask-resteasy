@@ -43,12 +43,16 @@ class RequestParser(object):
         return self._sort
 
     @property
+    def include(self):
+        return self._include
+
+    @property
     def qp_key_pairs_del(self):
-        return '|'
+        return ','
 
     @property
     def qp_key_val_del(self):
-        return '::'
+        return ':'
 
     @property
     def filter_qp(self):
@@ -57,6 +61,10 @@ class RequestParser(object):
     @property
     def sort_qp(self):
         return 'sort'
+
+    @property
+    def include_qp(self):
+        return 'include'
 
     def _parse(self, **kwargs):
 
@@ -77,7 +85,7 @@ class RequestParser(object):
         else:
             self._link = None
 
-            # parse query params
+        # parse query params
         if self.filter_qp in request.args:
             if request.args[self.filter_qp] is not None:
                 self._filter = self.parse_filter(request.args[self.filter_qp])
@@ -93,6 +101,15 @@ class RequestParser(object):
                 self._sort = None
         else:
             self._sort = None
+
+        if self.include_qp in request.args:
+            if request.args[self.include_qp] is not None:
+                self._include = self.parse_include(
+                    request.args[self.include_qp])
+            else:
+                self._include = None
+        else:
+            self._include = None
 
         assert self.link is None or self._cfg.to_model_field(self.link) in \
             self._cfg.relationships, 'invalid links resource url'
@@ -127,6 +144,17 @@ class RequestParser(object):
                     order = 'asc'
                 if fld in self._cfg.field_names:
                     rv[fld] = order
+        return rv
+
+    def parse_include(self, include_str):
+        rv = set()
+        if len(include_str) == 0:
+            return rv
+        else:
+            includes = include_str.split(self.qp_key_pairs_del)
+            for f in includes:
+                if f in self._cfg.relationships:
+                    rv.add(f)
         return rv
 
 
