@@ -1,21 +1,24 @@
 # coding=utf-8
+"""
+    flask_resteasy.parsers
+    ~~~~~~~~~~~~~~
+
+    Copyright 2014 Michael Schenk
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+    see LICENSE file for more details
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+"""
 from flask import request
-
-from .constants import ID_ROUTE_PARAM, FILTER_QP, SORT_QP
-from .constants import LINK_ROUTE_PARAM
-
-
-class ParserFactory(object):
-    @staticmethod
-    def create(cfg, **kwargs):
-        if request.method == 'GET':
-            return GetRequestParser(cfg, **kwargs)
-        elif request.method == 'POST':
-            return PostRequestParser(cfg, **kwargs)
-        elif request.method == 'DELETE':
-            return DeleteRequestParser(cfg, **kwargs)
-        elif request.method == 'PUT':
-            return PutRequestParser(cfg, **kwargs)
 
 
 class RequestParser(object):
@@ -39,27 +42,55 @@ class RequestParser(object):
     def sort_by(self):
         return self._sort
 
+    @property
+    def qp_key_pairs_del(self):
+        return '|'
+
+    @property
+    def qp_key_val_del(self):
+        return '::'
+
+    @property
+    def filter_qp(self):
+        return 'filter'
+
+    @property
+    def sort_qp(self):
+        return 'sort'
+
     def _parse(self, **kwargs):
 
         # parse route params
-        if ID_ROUTE_PARAM in kwargs and kwargs[ID_ROUTE_PARAM] is not None:
-            self._idents = kwargs[ID_ROUTE_PARAM].split(',')
+        if self._cfg.id_route_param in kwargs:
+            if kwargs[self._cfg.id_route_param] is not None:
+                self._idents = kwargs[self._cfg.id_route_param].split(',')
+            else:
+                self._idents = []
         else:
             self._idents = []
 
-        if LINK_ROUTE_PARAM in kwargs and kwargs[LINK_ROUTE_PARAM] is not None:
-            self._link = kwargs[LINK_ROUTE_PARAM]
+        if self._cfg.link_route_param in kwargs:
+            if kwargs[self._cfg.link_route_param] is not None:
+                self._link = kwargs[self._cfg.link_route_param]
+            else:
+                self._link = None
         else:
             self._link = None
 
-        # parse query params
-        if FILTER_QP in request.args and request.args[FILTER_QP] is not None:
-            self._filter = self.parse_filter(request.args[FILTER_QP])
+            # parse query params
+        if self.filter_qp in request.args:
+            if request.args[self.filter_qp] is not None:
+                self._filter = self.parse_filter(request.args[self.filter_qp])
+            else:
+                self._filter = None
         else:
             self._filter = None
 
-        if SORT_QP in request.args and request.args[SORT_QP] is not None:
-            self._sort = self.parse_sort(request.args[SORT_QP])
+        if self.sort_qp in request.args:
+            if request.args[self.sort_qp] is not None:
+                self._sort = self.parse_sort(request.args[self.sort_qp])
+            else:
+                self._sort = None
         else:
             self._sort = None
 
@@ -74,9 +105,9 @@ class RequestParser(object):
         if len(filter_str) == 0:
             return rv
         else:
-            filters = filter_str.split('|')
+            filters = filter_str.split(self.qp_key_pairs_del)
             for f in filters:
-                filter_pair = f.split('::')
+                filter_pair = f.split(self.qp_key_val_del)
                 if filter_pair[0] in self._cfg.field_names:
                     rv[filter_pair[0]] = filter_pair[1]
         return rv
@@ -86,7 +117,7 @@ class RequestParser(object):
         if len(sort_str) == 0:
             return rv
         else:
-            sorts = sort_str.split('|')
+            sorts = sort_str.split(self.qp_key_pairs_del)
             for s in sorts:
                 if s[:1] == '-':
                     fld = s[1:]

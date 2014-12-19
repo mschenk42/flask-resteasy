@@ -1,8 +1,25 @@
 # coding=utf-8
+"""
+    flask_resteasy.processors
+    ~~~~~~~~~~~~~~
+
+    Copyright 2014 Michael Schenk
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+    see LICENSE file for more details
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+"""
 from abc import abstractmethod
 from flask import request
-
-from .constants import LINKS_NODE
 
 
 class RequestProcessor(object):
@@ -114,8 +131,8 @@ class RequestProcessor(object):
         for root in j_dict:
             _json_to_model_fields(j_dict[root])
             if self._cfg.use_link_nodes:
-                if LINKS_NODE in j_dict[root]:
-                    _json_to_model_links(j_dict[root][LINKS_NODE])
+                if self._cfg.links_node in j_dict[root]:
+                    _json_to_model_links(j_dict[root][self._cfg.links_node])
                 else:
                     _json_to_model_links(j_dict[root])
             else:
@@ -183,16 +200,3 @@ class PutRequestProcessor(RequestProcessor):
             self._json_to_model(json, model)
         self._cfg.db.session.commit()
         self.results.append(model)
-
-
-class ProcessorFactory(object):
-    @staticmethod
-    def create(cfg, request_parser):
-        if request.method == 'GET':
-            return GetRequestProcessor(cfg, request_parser)
-        elif request.method == 'POST':
-            return PostRequestProcessor(cfg, request_parser)
-        elif request.method == 'DELETE':
-            return DeleteRequestProcessor(cfg, request_parser)
-        elif request.method == 'PUT':
-            return PutRequestProcessor(cfg, request_parser)

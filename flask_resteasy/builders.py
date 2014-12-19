@@ -1,7 +1,24 @@
 # coding=utf-8
-from flask import request
+"""
+    flask_resteasy.builders
+    ~~~~~~~~~~~~~~
 
-from .constants import LINKS_NODE
+    Copyright 2014 Michael Schenk
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+    see LICENSE file for more details
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+"""
+from flask import request
 
 
 class ResponseBuilder(object):
@@ -53,9 +70,9 @@ class ResponseBuilder(object):
 
     def _set_link(self, dic, link_key, link_obj):
         if self._cfg.use_link_nodes:
-            if LINKS_NODE not in dic:
-                dic[LINKS_NODE] = {}
-            dic[LINKS_NODE][link_key] = link_obj
+            if self._cfg.links_node not in dic:
+                dic[self._cfg.links_node] = {}
+            dic[self._cfg.links_node][link_key] = link_obj
         else:
             dic[link_key] = link_obj
 
@@ -90,9 +107,3 @@ class ResponseBuilder(object):
         else:
             urls.append('%s/%d' % (request.url, objs.id))
         return urls
-
-
-class BuilderFactory(object):
-    @staticmethod
-    def create(cfg, response_builder):
-        return ResponseBuilder(cfg, response_builder)

@@ -1,11 +1,29 @@
 # coding=utf-8
-from flask.views import MethodView
+"""
+    flask_resteasy.views
+    ~~~~~~~~~~~~~~
 
+    Copyright 2014 Michael Schenk
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+    see LICENSE file for more details
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+"""
+from flask.views import MethodView
 from flask import jsonify
 
-from .configs import JSONAPIConfig
-from .constants import HTTP_METHODS, LINKS_NODE, LINK_ROUTE_PARAM
-from .constants import ID_ROUTE_PARAM
+from configs import JSONAPIConfig
+
+HTTP_METHODS = {'GET', 'POST', 'PUT', 'DELETE'}
 
 
 class APIView(MethodView):
@@ -16,9 +34,8 @@ class APIView(MethodView):
     def cfg(self):
         return self._cfg
 
-    def get(self, ident=None, link=None):
-        parser = self.cfg.parser_factory.create(self.cfg, ident=ident,
-                                                link=link)
+    def get(self, **kwargs):
+        parser = self.cfg.parser_factory.create(self.cfg, **kwargs)
         processor = self.cfg.processor_factory.create(self.cfg, parser)
         if parser.link:
             link_cfg = self.cfg.api_manager.get_cfg(parser.link)
@@ -36,16 +53,14 @@ class APIView(MethodView):
 
         return jsonify(builder.json_dic), 201, {'Location': url}
 
-    def delete(self, ident=None, link=None):
-        parser = self.cfg.parser_factory.create(self.cfg, ident=ident,
-                                                link=link)
+    def delete(self, **kwargs):
+        parser = self.cfg.parser_factory.create(self.cfg, **kwargs)
         self.cfg.processor_factory.create(self.cfg, parser)
 
         return jsonify({})
 
-    def put(self, ident=None, link=None):
-        parser = self.cfg.parser_factory.create(self.cfg, ident=ident,
-                                                link=link)
+    def put(self, **kwargs):
+        parser = self.cfg.parser_factory.create(self.cfg, **kwargs)
         processor = self.cfg.processor_factory.create(self.cfg, parser)
         builder = self.cfg.builder_factory.create(self.cfg, processor)
 
@@ -102,27 +117,29 @@ class APIManager(object):
         view_func = APIView.as_view(cfg.endpoint_name, cfg, **kwargs)
 
         methods = list({'GET', 'POST'}.intersection(reg_methods))
-        if methods is not None:
+        if len(methods) > 0:
             reg_with.add_url_rule(url,
                                   view_func=view_func,
                                   methods=methods)
 
         methods = list({'GET', 'PUT', 'DELETE'}.intersection(reg_methods))
-        if methods is not None:
-            reg_with.add_url_rule('%s/<%s>' % (url, ID_ROUTE_PARAM),
+        if len(methods) > 0:
+            reg_with.add_url_rule('%s/<%s>' % (url, cfg.id_route_param),
                                   view_func=view_func,
                                   methods=methods)
 
         methods = list({'GET'}.intersection(reg_methods))
-        if methods is not None:
+        if len(methods) > 0:
             if cfg.use_link_nodes:
                     reg_with.add_url_rule('%s/<%s>/%s/<%s>' %
-                                          (url, ID_ROUTE_PARAM, LINKS_NODE,
-                                           LINK_ROUTE_PARAM),
+                                          (url, cfg.id_route_param,
+                                           cfg.links_node,
+                                           cfg.link_route_param),
                                           view_func=view_func,
                                           methods=methods)
             else:
-                reg_with.add_url_rule('%s/<%s>/<%s>' % (url, ID_ROUTE_PARAM,
-                                                        LINK_ROUTE_PARAM),
+                reg_with.add_url_rule('%s/<%s>/<%s>' %
+                                      (url, cfg.id_route_param,
+                                       cfg.link_route_param),
                                       view_func=view_func,
                                       methods=methods)
