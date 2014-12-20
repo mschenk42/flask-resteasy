@@ -27,7 +27,7 @@ class RequestParser(object):
         return self._filter
 
     @property
-    def sort_by(self):
+    def sort(self):
         return self._sort
 
     @property
@@ -99,11 +99,12 @@ class RequestParser(object):
         else:
             self._include = None
 
-        assert self.link is None or self._cfg.to_model_field(self.link) in \
-            self._cfg.relationships, 'invalid links resource url'
-
-        assert self.link is None or len(self.idents) > 0, \
+        assert self.link is None or self._cfg.model_field_case(
+            self.link) in self._cfg.allowed_relationships, \
             'invalid links resource url'
+
+        assert self.link is None or len(
+            self.idents) > 0, 'invalid links resource url'
 
     def _parse_filter(self, filter_str):
         rv = {}
@@ -113,7 +114,7 @@ class RequestParser(object):
             filters = filter_str.split(self.qp_key_pairs_del)
             for f in filters:
                 filter_pair = f.split(self.qp_key_val_del)
-                if filter_pair[0] in self._cfg.field_names:
+                if filter_pair[0] in self._cfg.allowed_to_filter:
                     rv[filter_pair[0]] = filter_pair[1]
         return rv
 
@@ -130,7 +131,7 @@ class RequestParser(object):
                 else:
                     fld = s
                     order = 'asc'
-                if fld in self._cfg.field_names:
+                if fld in self._cfg.allowed_to_sort:
                     rv[fld] = order
         return rv
 
@@ -141,8 +142,7 @@ class RequestParser(object):
         else:
             includes = include_str.split(self.qp_key_pairs_del)
             for i in includes:
-                # todo add the ability to exclude relationships?
-                if i in self._cfg.relationships:
+                if i in self._cfg.allowed_to_include:
                     rv.add(i)
         return rv
 

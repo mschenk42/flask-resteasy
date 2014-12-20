@@ -40,15 +40,15 @@ class ResponseBuilder(object):
 
     def _build_includes(self, json_dic):
 
-        def _build_linked_obj(obj, ids_processed):
-            ident = getattr(obj, self._cfg.id_field)
-            if ident not in ids_processed:
-                d = self._obj_to_dic(obj)
+        def _build_linked_obj(lo, ids_p):
+            ident = getattr(lo, self._cfg.id_field)
+            if ident not in ids_p:
+                d = self._obj_to_dic(lo)
                 if use_links:
                     json_dic[self._cfg.linked_node][link].append(d)
                 else:
                     json_dic[link].append(d)
-                ids_processed.add(ident)
+                ids_p.add(ident)
 
         for link in self._rp.linked_objs:
             use_links = self._cfg.use_link_nodes
@@ -80,10 +80,10 @@ class ResponseBuilder(object):
 
     def _obj_fields_to_dic(self, obj):
         dic = {}
-        convert = self._cfg.to_json_converters
+        convert = self._cfg.model_to_json_type_converters
         if obj is not None:
-            for field_name in self._cfg.fields_to_json:
-                field_name_key = self._cfg.to_json_node(field_name)
+            for field_name in self._cfg.allowed_from_model:
+                field_name_key = self._cfg.json_node_case(field_name)
                 v = getattr(obj, field_name)
                 current_type = self._cfg.field_types[field_name]
                 if current_type in convert and v is not None:
@@ -103,10 +103,10 @@ class ResponseBuilder(object):
     def _obj_links_to_dic(self, obj):
         dic = {}
         if obj is not None:
-            links = self._cfg.relationships
+            links = self._cfg.allowed_relationships
             dic = {}
             for link in links:
-                link_key = self._cfg.to_json_node(link)
+                link_key = self._cfg.json_node_case(link)
                 linked_obj = getattr(obj, link)
                 if isinstance(linked_obj, list):
                     l_lst = []

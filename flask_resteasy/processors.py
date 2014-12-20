@@ -15,8 +15,8 @@ class RequestProcessor(object):
     def __init__(self, cfg, request_parser):
         self._cfg = cfg
         self._rp = request_parser
-        self._parents = []
-        self._includes = {}
+        self._resource_objs = []
+        self._linked_objs = {}
         self._render_as_list = False
         self._process()
 
@@ -26,7 +26,7 @@ class RequestProcessor(object):
 
     @property
     def resource_objs(self):
-        return self._parents
+        return self._resource_objs
 
     @property
     def render_as_list(self):
@@ -34,7 +34,7 @@ class RequestProcessor(object):
 
     @property
     def linked_objs(self):
-        return self._includes
+        return self._linked_objs
 
     @property
     def root_name(self):
@@ -48,8 +48,8 @@ class RequestProcessor(object):
         query = model_class.query
         if self._rp.filter:
             query = query.filter_by(**self._rp.filter)
-        if self._rp.sort_by:
-            for col, order in self._rp.sort_by.items():
+        if self._rp.sort:
+            for col, order in self._rp.sort.items():
                 fld = getattr(getattr(model_class, col), order)()
                 query = query.order_by(fld)
         return query
@@ -101,12 +101,12 @@ class RequestProcessor(object):
     def _json_to_model(self, j_dict, model):
 
         def _json_to_model_fields(j_dict_root):
-            for c in self._cfg.fields_to_model:
+            for c in self._cfg.allowed_to_model:
                 if c in j_dict_root:
                     setattr(model, c, j_dict_root[c])
 
         def _json_to_model_links(j_dict_links):
-            for c in self._cfg.relationships:
+            for c in self._cfg.allowed_relationships:
                 if c in j_dict_links:
                     model_link = j_dict_links[c]
                     if model_link is None:
@@ -146,31 +146,31 @@ class GetRequestProcessor(RequestProcessor):
         if self._rp.link:
             assert len(r_objs) > 0, 'No parent resource found for links'
             for r_o in r_objs:
-                l_objs = getattr(r_o, self._cfg.to_model_field(self._rp.link))
+                l_objs = getattr(r_o,
+                                 self._cfg.model_field_case(self._rp.link))
                 self._render_as_list = isinstance(l_objs, list)
                 if self._render_as_list:
-                    self._parents.extend(l_objs)
+                    self._resource_objs.extend(l_objs)
                 else:
-                    self._parents.append(l_objs)
+                    self._resource_objs.append(l_objs)
                 self._process_includes_for(l_objs)
         else:
             self._process_includes_for(r_objs)
             self._render_as_list = len(self._rp.idents) != 1
-            self._parents.extend(r_objs)
+            self._resource_objs.extend(r_objs)
 
     def _process_includes_for(self, obj):
-        # todo add to config ability to exclude relationships in config?
 
-        def set_include(parent_obj, include):
-            if hasattr(parent_obj, include):
-                k = pluralize(include)
-                if k not in self._includes:
-                    self._includes[k] = []
-                self._includes[k].append(getattr(parent_obj, include))
+        def set_include(parent_obj, inc):
+            if hasattr(parent_obj, inc):
+                k = pluralize(inc)
+                if k not in self._linked_objs:
+                    self._linked_objs[k] = []
+                self._linked_objs[k].append(getattr(parent_obj, inc))
 
         if self._rp.include:
             for include in self._rp.include:
-                if include not in self._cfg.relationships:
+                if include not in self._cfg.allowed_relationships:
                     continue
                 if isinstance(obj, list):
                     for o in obj:
@@ -201,7 +201,7 @@ class PostRequestProcessor(RequestProcessor):
             model = self._cfg.model_class()
             self._json_to_model(json, model)
         self._cfg.db.session.commit()
-        self._parents.append(model)
+        self._resource_objs.append(model)
 
 
 class PutRequestProcessor(RequestProcessor):
