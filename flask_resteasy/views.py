@@ -9,7 +9,7 @@
 from flask.views import MethodView
 from flask import jsonify
 
-from configs import JSONAPIConfig
+from .configs import JSONAPIConfig
 
 HTTP_METHODS = {'GET', 'POST', 'PUT', 'DELETE'}
 
