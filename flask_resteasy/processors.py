@@ -1,7 +1,7 @@
 # coding=utf-8
 """
     flask_resteasy.processors
-    ~~~~~~~~~~~~~~
+    ~~~~~~~~~~~~~~~~~~~~~~~~~
 
     Copyright 2014 Michael Schenk
 
@@ -37,7 +37,7 @@ class RequestProcessor(object):
         pass
 
     @property
-    def parents(self):
+    def resource_objs(self):
         return self._parents
 
     @property
@@ -45,7 +45,7 @@ class RequestProcessor(object):
         return self._render_as_list
 
     @property
-    def includes(self):
+    def linked_objs(self):
         return self._includes
 
     @property
@@ -227,4 +227,4 @@ class PutRequestProcessor(RequestProcessor):
             model = self._get_or_404(self._rp.idents[0])
             self._json_to_model(json, model)
         self._cfg.db.session.commit()
-        self.parents.append(model)
+        self.resource_objs.append(model)

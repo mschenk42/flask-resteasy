@@ -1,7 +1,7 @@
 # coding=utf-8
 """
     flask_resteasy.builders
-    ~~~~~~~~~~~~~~
+    ~~~~~~~~~~~~~~~~~~~~~~~
 
     Copyright 2014 Michael Schenk
 
@@ -34,18 +34,18 @@ class ResponseBuilder(object):
 
     @property
     def urls(self):
-        return self._get_urls_for(self._rp.parents)
+        return self._get_urls_for(self._rp.resource_objs)
 
     def _build(self):
         json_dic = {self._rp.root_name: [] if self._rp.render_as_list else {}}
 
         if self._rp.render_as_list:
-            for model in self._rp.parents:
+            for model in self._rp.resource_objs:
                 json_dic[self._rp.root_name].append(self._obj_to_dic(model))
         else:
-            if len(self._rp.parents) > 0:
+            if len(self._rp.resource_objs) > 0:
                 json_dic[self._rp.root_name] = self._obj_to_dic(
-                    self._rp.parents[0])
+                    self._rp.resource_objs[0])
 
         self._build_includes(json_dic)
         self._json_dic = json_dic
@@ -62,7 +62,7 @@ class ResponseBuilder(object):
                     json_dic[link].append(d)
                 ids_processed.add(ident)
 
-        for link in self._rp.includes:
+        for link in self._rp.linked_objs:
             use_links = self._cfg.use_link_nodes
             if use_links:
                 json_dic[self._cfg.linked_node] = {}
@@ -76,7 +76,7 @@ class ResponseBuilder(object):
             try:
                 self._cfg = self._cfg.api_manager.get_cfg(link)
                 ids_processed = set()
-                for obj in self._rp.includes[link]:
+                for obj in self._rp.linked_objs[link]:
                     if isinstance(obj, list):
                         for o in obj:
                             _build_linked_obj(o, ids_processed)

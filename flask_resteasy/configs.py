@@ -1,7 +1,7 @@
 # coding=utf-8
 """
     flask_resteasy.configs
-    ~~~~~~~~~~~~~~
+    ~~~~~~~~~~~~~~~~~~~~~~
 
     Copyright 2014 Michael Schenk
 

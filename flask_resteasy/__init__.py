@@ -1,7 +1,7 @@
 # coding=utf-8
 """
     flask_resteasy.__init__
-    ~~~~~~~~~~~~~~
+    ~~~~~~~~~~~~~~~~~~~~~~~
 
     Copyright 2014 Michael Schenk
 

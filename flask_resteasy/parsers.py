@@ -1,7 +1,7 @@
 # coding=utf-8
 """
     flask_resteasy.parsers
-    ~~~~~~~~~~~~~~
+    ~~~~~~~~~~~~~~~~~~~~~~
 
     Copyright 2014 Michael Schenk
 
@@ -88,7 +88,7 @@ class RequestParser(object):
         # parse query params
         if self.filter_qp in request.args:
             if request.args[self.filter_qp] is not None:
-                self._filter = self.parse_filter(request.args[self.filter_qp])
+                self._filter = self._parse_filter(request.args[self.filter_qp])
             else:
                 self._filter = None
         else:
@@ -96,7 +96,7 @@ class RequestParser(object):
 
         if self.sort_qp in request.args:
             if request.args[self.sort_qp] is not None:
-                self._sort = self.parse_sort(request.args[self.sort_qp])
+                self._sort = self._parse_sort(request.args[self.sort_qp])
             else:
                 self._sort = None
         else:
@@ -104,7 +104,7 @@ class RequestParser(object):
 
         if self.include_qp in request.args:
             if request.args[self.include_qp] is not None:
-                self._include = self.parse_include(
+                self._include = self._parse_include(
                     request.args[self.include_qp])
             else:
                 self._include = None
@@ -117,7 +117,7 @@ class RequestParser(object):
         assert self.link is None or len(self.idents) > 0, \
             'invalid links resource url'
 
-    def parse_filter(self, filter_str):
+    def _parse_filter(self, filter_str):
         rv = {}
         if len(filter_str) == 0:
             return rv
@@ -129,7 +129,7 @@ class RequestParser(object):
                     rv[filter_pair[0]] = filter_pair[1]
         return rv
 
-    def parse_sort(self, sort_str):
+    def _parse_sort(self, sort_str):
         rv = {}
         if len(sort_str) == 0:
             return rv
@@ -146,15 +146,16 @@ class RequestParser(object):
                     rv[fld] = order
         return rv
 
-    def parse_include(self, include_str):
+    def _parse_include(self, include_str):
         rv = set()
         if len(include_str) == 0:
             return rv
         else:
             includes = include_str.split(self.qp_key_pairs_del)
-            for f in includes:
-                if f in self._cfg.relationships:
-                    rv.add(f)
+            for i in includes:
+                # todo add the ability to exclude relationships?
+                if i in self._cfg.relationships:
+                    rv.add(i)
         return rv
 
 

@@ -1,7 +1,7 @@
 # coding=utf-8
 """
     flask_resteasy.factories
-    ~~~~~~~~~~~~~~
+    ~~~~~~~~~~~~~~~~~~~~~~~~
 
     Copyright 2014 Michael Schenk
 
@@ -27,19 +27,6 @@ from .processors import DeleteRequestProcessor, PutRequestProcessor
 from .builders import ResponseBuilder
 
 
-class ProcessorFactory(object):
-    @staticmethod
-    def create(cfg, request_parser):
-        if request.method == 'GET':
-            return GetRequestProcessor(cfg, request_parser)
-        elif request.method == 'POST':
-            return PostRequestProcessor(cfg, request_parser)
-        elif request.method == 'DELETE':
-            return DeleteRequestProcessor(cfg, request_parser)
-        elif request.method == 'PUT':
-            return PutRequestProcessor(cfg, request_parser)
-
-
 class ParserFactory(object):
     @staticmethod
     def create(cfg, **kwargs):
@@ -51,6 +38,19 @@ class ParserFactory(object):
             return DeleteRequestParser(cfg, **kwargs)
         elif request.method == 'PUT':
             return PutRequestParser(cfg, **kwargs)
+
+
+class ProcessorFactory(object):
+    @staticmethod
+    def create(cfg, request_parser):
+        if request.method == 'GET':
+            return GetRequestProcessor(cfg, request_parser)
+        elif request.method == 'POST':
+            return PostRequestProcessor(cfg, request_parser)
+        elif request.method == 'DELETE':
+            return DeleteRequestProcessor(cfg, request_parser)
+        elif request.method == 'PUT':
+            return PutRequestProcessor(cfg, request_parser)
 
 
 class BuilderFactory(object):

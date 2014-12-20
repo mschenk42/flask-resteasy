@@ -1,7 +1,7 @@
 # coding=utf-8
 """
     flask_resteasy.views
-    ~~~~~~~~~~~~~~
+    ~~~~~~~~~~~~~~~~~~~~
 
     Copyright 2014 Michael Schenk
 
@@ -30,39 +30,35 @@ class APIView(MethodView):
     def __init__(self, cfg):
         self._cfg = cfg
 
-    @property
-    def cfg(self):
-        return self._cfg
-
     def get(self, **kwargs):
-        parser = self.cfg.parser_factory.create(self.cfg, **kwargs)
-        processor = self.cfg.processor_factory.create(self.cfg, parser)
+        parser = self._cfg.parser_factory.create(self._cfg, **kwargs)
+        processor = self._cfg.processor_factory.create(self._cfg, parser)
         if parser.link:
-            link_cfg = self.cfg.api_manager.get_cfg(parser.link)
+            link_cfg = self._cfg.api_manager.get_cfg(parser.link)
             builder = link_cfg.builder_factory.create(link_cfg, processor)
         else:
-            builder = self.cfg.builder_factory.create(self.cfg, processor)
+            builder = self._cfg.builder_factory.create(self._cfg, processor)
 
         return jsonify(builder.json_dic)
 
     def post(self):
-        parser = self.cfg.parser_factory.create(self.cfg)
-        processor = self.cfg.processor_factory.create(self.cfg, parser)
-        builder = self.cfg.builder_factory.create(self.cfg, processor)
+        parser = self._cfg.parser_factory.create(self._cfg)
+        processor = self._cfg.processor_factory.create(self._cfg, parser)
+        builder = self._cfg.builder_factory.create(self._cfg, processor)
         url = builder.urls[0] if len(builder.urls) == 1 else builder.urls
 
         return jsonify(builder.json_dic), 201, {'Location': url}
 
     def delete(self, **kwargs):
-        parser = self.cfg.parser_factory.create(self.cfg, **kwargs)
-        self.cfg.processor_factory.create(self.cfg, parser)
+        parser = self._cfg.parser_factory.create(self._cfg, **kwargs)
+        self._cfg.processor_factory.create(self._cfg, parser)
 
         return jsonify({})
 
     def put(self, **kwargs):
-        parser = self.cfg.parser_factory.create(self.cfg, **kwargs)
-        processor = self.cfg.processor_factory.create(self.cfg, parser)
-        builder = self.cfg.builder_factory.create(self.cfg, processor)
+        parser = self._cfg.parser_factory.create(self._cfg, **kwargs)
+        processor = self._cfg.processor_factory.create(self._cfg, parser)
+        builder = self._cfg.builder_factory.create(self._cfg, processor)
 
         return jsonify(builder.json_dic)
 
