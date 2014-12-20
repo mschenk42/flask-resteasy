@@ -263,7 +263,18 @@ class TestJSONAPI(TestAPI):
             self.assertTrue(j['products'][0]['name'] == 'Green Lettuce')
             self.assertTrue(len(j['products']) == 2)
 
-    def test_include(self):
+    def test_include_list_obj(self):
+        with self.client as c:
+            rv = c.get(self.get_url('/distributors'),
+                       headers=self.get_headers(),
+                       query_string={'include': 'products'})
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
+            self.assertTrue(rv.status_code == 200)
+            self.assertTrue('linked' in j)
+            self.assertTrue('products' in j['linked'])
+            self.assertTrue(len(j['linked']['products']) == 2)
+
+    def test_include_obj(self):
         with self.client as c:
             rv = c.get(self.get_url('/products'),
                        headers=self.get_headers(),
@@ -272,6 +283,7 @@ class TestJSONAPI(TestAPI):
             self.assertTrue(rv.status_code == 200)
             self.assertTrue('linked' in j)
             self.assertTrue('distributors' in j['linked'])
+            self.assertTrue(len(j['linked']['distributors']) == 1)
 
 
 class TestEmberAPI(TestJSONAPI):
@@ -291,7 +303,17 @@ class TestEmberAPI(TestJSONAPI):
             self.assertTrue('distributor' in j)
             self.assertTrue(isinstance(j['distributor'], dict))
 
-    def test_include(self):
+    def test_include_list_obj(self):
+        with self.client as c:
+            rv = c.get(self.get_url('/distributors'),
+                       headers=self.get_headers(),
+                       query_string={'include': 'products'})
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
+            self.assertTrue(rv.status_code == 200)
+            self.assertTrue('products' in j)
+            self.assertTrue(len(j['products']) == 2)
+
+    def test_include_obj(self):
         with self.client as c:
             rv = c.get(self.get_url('/products'),
                        headers=self.get_headers(),
@@ -299,3 +321,4 @@ class TestEmberAPI(TestJSONAPI):
             j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue(rv.status_code == 200)
             self.assertTrue('distributors' in j)
+            self.assertTrue(len(j['distributors']) == 1)

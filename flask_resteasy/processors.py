@@ -176,7 +176,7 @@ class GetRequestProcessor(RequestProcessor):
         def set_include(parent_obj, include):
             if hasattr(parent_obj, include):
                 k = pluralize(include)
-                if include not in self._includes:
+                if k not in self._includes:
                     self._includes[k] = []
                 self._includes[k].append(getattr(parent_obj, include))
 

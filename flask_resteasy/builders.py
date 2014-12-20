@@ -47,25 +47,43 @@ class ResponseBuilder(object):
                 json_dic[self._rp.root_name] = self._obj_to_dic(
                     self._rp.parents[0])
 
+        self._build_includes(json_dic)
+        self._json_dic = json_dic
+
+    def _build_includes(self, json_dic):
+
+        def _build_linked_obj(obj, ids_processed):
+            ident = getattr(obj, self._cfg.id_field)
+            if ident not in ids_processed:
+                d = self._obj_to_dic(obj)
+                if use_links:
+                    json_dic[self._cfg.linked_node][link].append(d)
+                else:
+                    json_dic[link].append(d)
+                ids_processed.add(ident)
+
         for link in self._rp.includes:
             use_links = self._cfg.use_link_nodes
+            if use_links:
+                json_dic[self._cfg.linked_node] = {}
+                json_dic[self._cfg.linked_node][link] = []
+            else:
+                json_dic[link] = []
+
             # switch cfg temporarily to the link object's configuration
             # this is borderline hackish
             parent_cfg = self._cfg
             try:
                 self._cfg = self._cfg.api_manager.get_cfg(link)
+                ids_processed = set()
                 for obj in self._rp.includes[link]:
-                    rv = self._obj_to_dic(obj)
-                    if use_links:
-                        if self._cfg.linked_node not in json_dic:
-                            json_dic[self._cfg.linked_node] = {}
-                        json_dic[self._cfg.linked_node][link] = rv
+                    if isinstance(obj, list):
+                        for o in obj:
+                            _build_linked_obj(o, ids_processed)
                     else:
-                        json_dic[link] = rv
+                        _build_linked_obj(obj, ids_processed)
             finally:
                 self._cfg = parent_cfg
-
-        self._json_dic = json_dic
 
     def _obj_to_dic(self, obj):
         dic = self._obj_fields_to_dic(obj)
