@@ -114,19 +114,19 @@ class APIManager(object):
 
         view_func = APIView.as_view(cfg.endpoint_name, cfg)
 
-        methods = list({'GET', 'POST'}.intersection(reg_methods))
+        methods = list({'GET', 'POST'} & reg_methods)
         if len(methods) > 0:
             reg_with.add_url_rule(url,
                                   view_func=view_func,
                                   methods=methods)
 
-        methods = list({'GET', 'PUT', 'DELETE'}.intersection(reg_methods))
+        methods = list({'GET', 'PUT', 'DELETE'} & reg_methods)
         if len(methods) > 0:
             reg_with.add_url_rule('%s/<%s>' % (url, cfg.id_route_param),
                                   view_func=view_func,
                                   methods=methods)
 
-        methods = list({'GET'}.intersection(reg_methods))
+        methods = list({'GET'} & reg_methods)
         if len(methods) > 0:
             if cfg.use_link_nodes:
                     reg_with.add_url_rule('%s/<%s>/%s/<%s>' %
