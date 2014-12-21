@@ -84,7 +84,13 @@ class APIManager(object):
 
     def get_excludes_for(self, key):
         if self._excludes is not None and key in self._excludes:
-            return set(self._excludes[key])
+            return set(self._excludes[key]) | self.get_excludes_for_all()
+        else:
+            return self.get_excludes_for_all()
+
+    def get_excludes_for_all(self):
+        if self._excludes is not None and 'all' in self._excludes:
+            return set(self._excludes['all'])
         else:
             return set([])
 

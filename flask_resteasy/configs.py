@@ -213,9 +213,17 @@ class JSONAPIConfig(object):
     def _get_excludes_for(self, key):
         if self._excludes is not None and key in self._excludes:
             return (set(self._excludes[key]) |
+                    self._get_excludes_for_all() |
                     self.api_manager.get_excludes_for(key))
         else:
-            return self.api_manager.get_excludes_for(key)
+            return (self._get_excludes_for_all() |
+                    self.api_manager.get_excludes_for(key))
+
+    def _get_excludes_for_all(self):
+        if self._excludes is not None and 'all' in self._excludes:
+            return set(self._excludes['all'])
+        else:
+            return set([])
 
     def _private_fields(self):
         return set([n for n in self.all_fields
