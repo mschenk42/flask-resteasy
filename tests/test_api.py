@@ -54,6 +54,8 @@ class TestAPI(unittest.TestCase):
         max_order_qty = db.Column(db.Integer)
         reorder_level = db.Column(db.Integer)
         reorder_qty = db.Column(db.Integer)
+        _private_fld = db.Column(db.String(32))
+        created = db.Column(db.DATE)
         distributor_id = db.Column(
             db.Integer, db.ForeignKey('distributors.id'),
             nullable=False)
@@ -322,3 +324,23 @@ class TestEmberAPI(TestJSONAPI):
             self.assertTrue(rv.status_code == 200)
             self.assertTrue('distributors' in j)
             self.assertTrue(len(j['distributors']) == 1)
+
+
+class TestRegisterAPIExcludes(TestAPI):
+    @classmethod
+    def setUpClass(cls):
+        super(TestRegisterAPIExcludes, cls).setUpClass()
+        api_manager = APIManager(app, db, cfg_class=JSONAPIConfig,
+                                 excludes={'from_model': ['created']})
+        api_manager.register_api(TestAPI.Product,
+                                 excludes={'from_model': ['reorder_qty']})
+        api_manager.register_api(TestAPI.Distributor)
+
+    def test_get_with_excludes(self):
+        with self.client as c:
+            rv = c.get(self.get_url('/products/1'), headers=self.get_headers())
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
+            self.assertTrue(rv.status_code == 200)
+            self.assertTrue('product' in j)
+            self.assertTrue(isinstance(j['product'], dict))
+            self.assertTrue('reorder_qty' not in j['product'])

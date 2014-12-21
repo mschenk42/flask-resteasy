@@ -14,11 +14,12 @@ from .factories import ParserFactory, ProcessorFactory, BuilderFactory
 
 
 class JSONAPIConfig(object):
-    def __init__(self, model_class, app, db, api_manager):
+    def __init__(self, model_class, app, db, api_manager, excludes):
         self._model = model_class
         self._app = app
         self._db = db
         self._api_manager = api_manager
+        self._excludes = excludes
 
     @property
     def model_class(self):
@@ -69,16 +70,16 @@ class JSONAPIConfig(object):
         return self._allowed_relationships()
 
     @property
-    def allowed_to_sort(self):
-        return self._allowed_to_sort()
+    def allowed_sort(self):
+        return self._allowed_sort()
 
     @property
-    def allowed_to_filter(self):
-        return self._allowed_to_filter()
+    def allowed_filter(self):
+        return self._allowed_filter()
 
     @property
-    def allowed_to_include(self):
-        return self._allowed_to_include()
+    def allowed_include(self):
+        return self._allowed_include()
 
     @property
     def json_node_case(self):
@@ -152,13 +153,16 @@ class JSONAPIConfig(object):
     def builder_factory(self):
         return self._builder_factory()
 
-    def _model_field_case(self):
+    @staticmethod
+    def _model_field_case():
         return lambda s: underscore(s)
 
-    def _json_node_case(self):
+    @staticmethod
+    def _json_node_case():
         return lambda s: camelize(s, False)
 
-    def _model_to_json_type_converters(self):
+    @staticmethod
+    def _model_to_json_type_converters():
         return {"DATETIME": datetime.datetime.isoformat}
 
     def _all_fields(self):
@@ -172,7 +176,8 @@ class JSONAPIConfig(object):
         return set([n for n in self.all_fields if
                     n.endswith(self.relationship_field_id_postfix)])
 
-    def _resource_name_case(self):
+    @staticmethod
+    def _resource_name_case():
         return lambda s: camelize(s, False)
 
     def _resource_name(self):
@@ -184,10 +189,33 @@ class JSONAPIConfig(object):
 
     def _allowed_to_model(self):
         return (self.all_fields - self.private_fields -
-                self.relationship_fields - {self.id_field})
+                self.relationship_fields - {self.id_field} -
+                self._get_excludes_for('to_model'))
 
     def _allowed_from_model(self):
-        return self.all_fields - self.private_fields - self.relationship_fields
+        return (self.all_fields - self.private_fields -
+                self.relationship_fields -
+                self._get_excludes_for('from_model'))
+
+    def _allowed_relationships(self):
+        return self._relationships() - self._get_excludes_for('relationship')
+
+    def _allowed_sort(self):
+        return self._allowed_from_model() - self._get_excludes_for('sort')
+
+    def _allowed_filter(self):
+        return self._allowed_from_model() - self._get_excludes_for('filter')
+
+    def _allowed_include(self):
+        return (self._allowed_relationships() -
+                self._get_excludes_for('include'))
+
+    def _get_excludes_for(self, key):
+        if self._excludes is not None and key in self._excludes:
+            return (set(self._excludes[key]) |
+                    self.api_manager.get_excludes_for(key))
+        else:
+            return self.api_manager.get_excludes_for(key)
 
     def _private_fields(self):
         return set([n for n in self.all_fields
@@ -203,47 +231,45 @@ class JSONAPIConfig(object):
     def _use_link_nodes(self):
         return True
 
-    def _id_field(self):
+    @staticmethod
+    def _id_field():
         return 'id'
 
-    def _relationship_field_id_postfix(self):
+    @staticmethod
+    def _relationship_field_id_postfix():
         return '_id'
 
-    def _private_field_prefix(self):
+    @staticmethod
+    def _private_field_prefix():
         return '_'
 
-    def _id_route_param(self):
+    @staticmethod
+    def _id_route_param():
         return 'ident'
 
-    def _link_route_param(self):
+    @staticmethod
+    def _link_route_param():
         return 'link'
 
-    def _links_node(self):
+    @staticmethod
+    def _links_node():
         return 'links'
 
-    def _linked_node(self):
+    @staticmethod
+    def _linked_node():
         return 'linked'
 
-    def _parser_factory(self):
+    @staticmethod
+    def _parser_factory():
         return ParserFactory
 
-    def _processor_factory(self):
+    @staticmethod
+    def _processor_factory():
         return ProcessorFactory
 
-    def _builder_factory(self):
+    @staticmethod
+    def _builder_factory():
         return BuilderFactory
-
-    def _allowed_relationships(self):
-        return self._relationships()
-
-    def _allowed_to_sort(self):
-        return self._allowed_from_model()
-
-    def _allowed_to_filter(self):
-        return self._allowed_from_model()
-
-    def _allowed_to_include(self):
-        return self._allowed_relationships()
 
 
 class EmberConfig(JSONAPIConfig):

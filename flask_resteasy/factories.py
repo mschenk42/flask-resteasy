@@ -8,8 +8,7 @@
 """
 from flask import request
 
-from .parsers import GetRequestParser, PostRequestParser, DeleteRequestParser
-from .parsers import PutRequestParser
+from .parsers import RequestParser
 from .processors import GetRequestProcessor, PostRequestProcessor
 from .processors import DeleteRequestProcessor, PutRequestProcessor
 from .builders import ResponseBuilder
@@ -18,14 +17,7 @@ from .builders import ResponseBuilder
 class ParserFactory(object):
     @staticmethod
     def create(cfg, **kwargs):
-        if request.method == 'GET':
-            return GetRequestParser(cfg, **kwargs)
-        elif request.method == 'POST':
-            return PostRequestParser(cfg, **kwargs)
-        elif request.method == 'DELETE':
-            return DeleteRequestParser(cfg, **kwargs)
-        elif request.method == 'PUT':
-            return PutRequestParser(cfg, **kwargs)
+        return RequestParser(cfg, **kwargs)
 
 
 class ProcessorFactory(object):

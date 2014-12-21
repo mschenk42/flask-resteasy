@@ -52,12 +52,14 @@ class APIView(MethodView):
 
 
 class APIManager(object):
-    def __init__(self, app, db, cfg_class=JSONAPIConfig, decorators=None):
+    def __init__(self, app, db, cfg_class=JSONAPIConfig, decorators=None,
+                 excludes=None):
         self._app = None
         self._db = None
         self._model_for_resources = {}
         self._cfg_for_resources = {}
         self._cfg_class = cfg_class
+        self._excludes = excludes
         if decorators:
             APIView.decorators = decorators
         self.init_app(app, db)
@@ -80,16 +82,22 @@ class APIManager(object):
     def get_model(self, resource_name):
         return self._model_for_resources[str(resource_name.lower())]
 
-    def register_api(self, model_class, reg_methods=None, bp=None, **kwargs):
+    def get_excludes_for(self, key):
+        if self._excludes is not None and key in self._excludes:
+            return set(self._excludes[key])
+        else:
+            return set([])
+
+    def register_api(self, model_class, cfg_class=None, reg_methods=None,
+                     bp=None, excludes=None):
 
         if reg_methods is None:
             reg_methods = HTTP_METHODS
 
-        if 'cfg_class' not in kwargs:
+        if cfg_class is None:
             cfg_class = self._cfg_class
-        else:
-            cfg_class = kwargs['cfg_class']
-        cfg = cfg_class(model_class, self._app, self._db, self, **kwargs)
+
+        cfg = cfg_class(model_class, self._app, self._db, self, excludes)
 
         self._register_cfg(cfg, cfg.resource_name, cfg.resource_name_plural)
         self._register_model(model_class, cfg.resource_name,
@@ -98,7 +106,7 @@ class APIManager(object):
         reg_with = self._app if bp is None else bp
         url = '/%s' % cfg.resource_name_plural
 
-        view_func = APIView.as_view(cfg.endpoint_name, cfg, **kwargs)
+        view_func = APIView.as_view(cfg.endpoint_name, cfg)
 
         methods = list({'GET', 'POST'}.intersection(reg_methods))
         if len(methods) > 0:

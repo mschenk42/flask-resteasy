@@ -57,47 +57,31 @@ class RequestParser(object):
     def _parse(self, **kwargs):
 
         # parse route params
-        if self._cfg.id_route_param in kwargs:
-            if kwargs[self._cfg.id_route_param] is not None:
-                self._idents = kwargs[self._cfg.id_route_param].split(',')
-            else:
-                self._idents = []
-        else:
-            self._idents = []
+        self._idents = []
+        if self._cfg.id_route_param in kwargs and kwargs[
+                self._cfg.id_route_param] is not None:
+            self._idents = kwargs[self._cfg.id_route_param].split(',')
 
-        if self._cfg.link_route_param in kwargs:
-            if kwargs[self._cfg.link_route_param] is not None:
-                self._link = kwargs[self._cfg.link_route_param]
-            else:
-                self._link = None
-        else:
-            self._link = None
+        self._link = None
+        if self._cfg.link_route_param in kwargs and kwargs[
+                self._cfg.link_route_param] is not None:
+            self._link = kwargs[self._cfg.link_route_param]
 
         # parse query params
-        if self.filter_qp in request.args:
-            if request.args[self.filter_qp] is not None:
-                self._filter = self._parse_filter(request.args[self.filter_qp])
-            else:
-                self._filter = None
-        else:
-            self._filter = None
+        self._filter = None
+        if self.filter_qp in request.args and request.args[
+                self.filter_qp] is not None:
+            self._filter = self._parse_filter(request.args[self.filter_qp])
 
-        if self.sort_qp in request.args:
-            if request.args[self.sort_qp] is not None:
-                self._sort = self._parse_sort(request.args[self.sort_qp])
-            else:
-                self._sort = None
-        else:
-            self._sort = None
+        self._sort = None
+        if self.sort_qp in request.args and request.args[
+                self.sort_qp] is not None:
+            self._sort = self._parse_sort(request.args[self.sort_qp])
 
-        if self.include_qp in request.args:
-            if request.args[self.include_qp] is not None:
-                self._include = self._parse_include(
-                    request.args[self.include_qp])
-            else:
-                self._include = None
-        else:
-            self._include = None
+        self._include = None
+        if self.include_qp in request.args and request.args[
+                self.include_qp] is not None:
+            self._include = self._parse_include(request.args[self.include_qp])
 
         assert self.link is None or self._cfg.model_field_case(
             self.link) in self._cfg.allowed_relationships, \
@@ -114,7 +98,7 @@ class RequestParser(object):
             filters = filter_str.split(self.qp_key_pairs_del)
             for f in filters:
                 filter_pair = f.split(self.qp_key_val_del)
-                if filter_pair[0] in self._cfg.allowed_to_filter:
+                if filter_pair[0] in self._cfg.allowed_filter:
                     rv[filter_pair[0]] = filter_pair[1]
         return rv
 
@@ -131,7 +115,7 @@ class RequestParser(object):
                 else:
                     fld = s
                     order = 'asc'
-                if fld in self._cfg.allowed_to_sort:
+                if fld in self._cfg.allowed_sort:
                     rv[fld] = order
         return rv
 
@@ -142,22 +126,6 @@ class RequestParser(object):
         else:
             includes = include_str.split(self.qp_key_pairs_del)
             for i in includes:
-                if i in self._cfg.allowed_to_include:
+                if i in self._cfg.allowed_include:
                     rv.add(i)
         return rv
-
-
-class PostRequestParser(RequestParser):
-    pass
-
-
-class GetRequestParser(RequestParser):
-    pass
-
-
-class DeleteRequestParser(RequestParser):
-    pass
-
-
-class PutRequestParser(RequestParser):
-    pass
