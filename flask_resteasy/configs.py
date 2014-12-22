@@ -159,7 +159,7 @@ class JSONAPIConfig(object):
 
     @staticmethod
     def _json_node_case():
-        return lambda s: camelize(s, False)
+        return lambda s: underscore(s)
 
     @staticmethod
     def _model_to_json_type_converters():
@@ -178,7 +178,7 @@ class JSONAPIConfig(object):
 
     @staticmethod
     def _resource_name_case():
-        return lambda s: camelize(s, False)
+        return lambda s: underscore(s)
 
     def _resource_name(self):
         return self.resource_name_case(
@@ -188,27 +188,36 @@ class JSONAPIConfig(object):
         return pluralize(self.resource_name)
 
     def _allowed_to_model(self):
-        return (self.all_fields - self.private_fields -
-                self.relationship_fields - {self.id_field} -
-                self._get_excludes_for('to_model'))
+        return set(map(self._model_field_case(),
+                   (self.all_fields - self.private_fields -
+                    self.relationship_fields - {self.id_field} -
+                    self._get_excludes_for('to_model'))))
 
     def _allowed_from_model(self):
-        return (self.all_fields - self.private_fields -
-                self.relationship_fields -
-                self._get_excludes_for('from_model'))
+        return set(map(self._model_field_case(),
+                   (self.all_fields - self.private_fields -
+                    self.relationship_fields -
+                    self._get_excludes_for('from_model'))))
 
     def _allowed_relationships(self):
-        return self._relationships() - self._get_excludes_for('relationship')
+        return set(map(self._model_field_case(),
+                       (self._relationships() -
+                        self._get_excludes_for('relationship'))))
 
     def _allowed_sort(self):
-        return self._allowed_from_model() - self._get_excludes_for('sort')
+        return set(map(self._model_field_case(),
+                       self._allowed_from_model() -
+                       self._get_excludes_for('sort')))
 
     def _allowed_filter(self):
-        return self._allowed_from_model() - self._get_excludes_for('filter')
+        return set(map(self._model_field_case(),
+                       self._allowed_from_model() -
+                       self._get_excludes_for('filter')))
 
     def _allowed_include(self):
-        return (self._allowed_relationships() -
-                self._get_excludes_for('include'))
+        return set(map(self._model_field_case(),
+                       (self._allowed_relationships() -
+                        self._get_excludes_for('include'))))
 
     def _get_excludes_for(self, key):
         if self._excludes is not None and key in self._excludes:
@@ -283,3 +292,11 @@ class JSONAPIConfig(object):
 class EmberConfig(JSONAPIConfig):
     def _use_link_nodes(self):
         return False
+
+    @staticmethod
+    def _json_node_case():
+        return lambda s: camelize(s, False)
+
+    @staticmethod
+    def _resource_name_case():
+        return lambda s: camelize(s, False)

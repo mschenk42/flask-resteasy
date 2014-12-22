@@ -102,11 +102,13 @@ class RequestProcessor(object):
 
         def _json_to_model_fields(j_dict_root):
             for c in self._cfg.allowed_to_model:
-                if c in j_dict_root:
-                    setattr(model, c, j_dict_root[c])
+                j_key = self._cfg.json_node_case(c)
+                if j_key in j_dict_root:
+                    setattr(model, c, j_dict_root[j_key])
 
         def _json_to_model_links(j_dict_links):
             for c in self._cfg.allowed_relationships:
+                c = self._cfg.json_node_case(c)
                 if c in j_dict_links:
                     model_link = j_dict_links[c]
                     if model_link is None:
@@ -114,13 +116,15 @@ class RequestProcessor(object):
                     elif isinstance(model_link, list):
                         lst = self._get_all(
                             model_link,
-                            self._cfg.api_manager.get_model(c))
+                            self._cfg.api_manager.get_model(
+                                self._cfg.resource_name_case(c)))
                         getattr(model, c).extend(lst)
                     else:
                         setattr(model, c,
                                 self._get_or_404(
                                     model_link,
-                                    self._cfg.api_manager.get_model(c)))
+                                    self._cfg.api_manager.get_model(
+                                        self._cfg.resource_name_case(c))))
 
         for root in j_dict:
             _json_to_model_fields(j_dict[root])

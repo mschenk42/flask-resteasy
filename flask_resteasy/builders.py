@@ -40,36 +40,38 @@ class ResponseBuilder(object):
 
     def _build_includes(self, json_dic):
 
-        def _build_linked_obj(lo, ids_p):
-            ident = getattr(lo, self._cfg.id_field)
-            if ident not in ids_p:
-                d = self._obj_to_dic(lo)
+        def _build_linked_obj(o, link_key, ids_processed):
+            ident = getattr(o, self._cfg.id_field)
+            if ident not in ids_processed:
+                d = self._obj_to_dic(o)
                 if use_links:
-                    json_dic[self._cfg.linked_node][link].append(d)
+                    json_dic[self._cfg.linked_node][link_key].append(d)
                 else:
-                    json_dic[link].append(d)
-                ids_p.add(ident)
+                    json_dic[link_key].append(d)
+                ids_processed.add(ident)
 
         for link in self._rp.linked_objs:
             use_links = self._cfg.use_link_nodes
+            link_key = self._cfg.json_node_case(link)
             if use_links:
                 json_dic[self._cfg.linked_node] = {}
-                json_dic[self._cfg.linked_node][link] = []
+                json_dic[self._cfg.linked_node][link_key] = []
             else:
-                json_dic[link] = []
+                json_dic[link_key] = []
 
             # switch cfg temporarily to the link object's configuration
             # this is borderline hackish
             parent_cfg = self._cfg
             try:
-                self._cfg = self._cfg.api_manager.get_cfg(link)
+                self._cfg = self._cfg.api_manager.get_cfg(
+                    self._cfg.resource_name_case(link))
                 ids_processed = set()
                 for obj in self._rp.linked_objs[link]:
                     if isinstance(obj, list):
                         for o in obj:
-                            _build_linked_obj(o, ids_processed)
+                            _build_linked_obj(o, link_key, ids_processed)
                     else:
-                        _build_linked_obj(obj, ids_processed)
+                        _build_linked_obj(obj, link_key, ids_processed)
             finally:
                 self._cfg = parent_cfg
 

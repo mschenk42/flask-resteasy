@@ -62,6 +62,31 @@ class TestAPI(unittest.TestCase):
         distributor = db.relationship(
             'Distributor', backref=db.backref(__tablename__))
 
+    class StockCount(db.Model):
+        __tablename__ = 'stock_counts'
+
+        id = db.Column(db.Integer, primary_key=True)
+        description = db.Column(db.Text)
+        processed = db.Column(db.Boolean)
+        started_by = db.Column(db.String(64))
+
+    class StockLevel(db.Model):
+        __tablename__ = 'stock_levels'
+
+        id = db.Column(db.Integer, primary_key=True)
+        on_hand_qty = db.Column(db.Integer)
+        processed = db.Column(db.Boolean)
+
+        product_id = db.Column(db.Integer,
+                               db.ForeignKey('products.id'))
+        product = db.relationship('Product',
+                                  backref=db.backref(__tablename__))
+
+        stockcount_id = db.Column(db.Integer,
+                                  db.ForeignKey('stock_counts.id'))
+        stock_count = db.relationship('StockCount',
+                                      backref=db.backref(__tablename__))
+
     @classmethod
     def setUpClass(cls):
         global app, db
@@ -118,6 +143,22 @@ class TestAPI(unittest.TestCase):
         product2.reorder_qty = 24
         product2.distributor = distributor1
 
+        stockcount1 = TestAPI.StockCount()
+        stockcount1.description = 'Initial stock count'
+        stockcount1.processed = False
+
+        stocklevel1 = TestAPI.StockLevel()
+        stocklevel1.on_hand_qty = 12
+        stocklevel1.processed = False
+        stocklevel1.stock_count = stockcount1
+        stocklevel1.product = product1
+
+        stocklevel2 = TestAPI.StockLevel()
+        stocklevel2.on_hand_qty = 100
+        stocklevel2.processed = False
+        stocklevel2.stock_count = stockcount1
+        stocklevel2.product = product2
+
         db.session.add(product1, product2)
         db.session.commit()
 
@@ -140,6 +181,8 @@ class TestJSONAPI(TestAPI):
         api_manager = APIManager(app, db, cfg_class=JSONAPIConfig)
         api_manager.register_api(TestAPI.Product)
         api_manager.register_api(TestAPI.Distributor)
+        api_manager.register_api(TestAPI.StockCount)
+        api_manager.register_api(TestAPI.StockLevel)
 
     def test_get_relationship(self):
         with self.client as c:
@@ -187,7 +230,6 @@ class TestJSONAPI(TestAPI):
                 "distributor_code": "SYSCO",
                 "category": 1,
                 "brand": 1,
-                "stocklevels": [1],
                 "distributor": 1,
                 "unit": 1,
                 "name": "Green Lettuce",
@@ -208,20 +250,25 @@ class TestJSONAPI(TestAPI):
             self.assertTrue(rv.status_code == 201)
             self.assertTrue(
                 ('Location', self.get_url('/products/3')) == rv.headers[2])
-            self.assertTrue(
-                j['product']['description'] ==
-                "Organic green lettuce from the state of CA")
+            self.assertTrue(j['product']['description'] ==
+                            "Organic green lettuce from the state of CA")
+            self.assertTrue(j['product']['min_order_qty'] == 12)
 
     def test_put(self):
         p_json = {
             "product": {
                 "name": "Greenest Lettuce",
                 "description": "Organic green lettuce from the state of CA",
+                "min_order_qty": 100
             }
         }
         with self.client as c:
             rv = c.put(self.get_url('/products/1'), data=json.dumps(p_json),
                        headers=self.get_headers())
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
+            self.assertTrue(j['product']['description'] ==
+                            "Organic green lettuce from the state of CA")
+            self.assertTrue(j['product']['min_order_qty'] == 100)
             self.assertTrue(rv.status_code == 200)
 
     def test_delete(self):
@@ -267,14 +314,14 @@ class TestJSONAPI(TestAPI):
 
     def test_include_list_obj(self):
         with self.client as c:
-            rv = c.get(self.get_url('/distributors'),
+            rv = c.get(self.get_url('/products'),
                        headers=self.get_headers(),
-                       query_string={'include': 'products'})
+                       query_string={'include': 'stock_levels'})
             j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue(rv.status_code == 200)
             self.assertTrue('linked' in j)
-            self.assertTrue('products' in j['linked'])
-            self.assertTrue(len(j['linked']['products']) == 2)
+            self.assertTrue('stock_levels' in j['linked'])
+            self.assertTrue(len(j['linked']['stock_levels']) == 2)
 
     def test_include_obj(self):
         with self.client as c:
@@ -295,6 +342,8 @@ class TestEmberAPI(TestJSONAPI):
         api_manager = APIManager(app, db, cfg_class=EmberConfig)
         api_manager.register_api(TestAPI.Product)
         api_manager.register_api(TestAPI.Distributor)
+        api_manager.register_api(TestAPI.StockCount)
+        api_manager.register_api(TestAPI.StockLevel)
 
     def test_get_relationship(self):
         with self.client as c:
@@ -307,13 +356,13 @@ class TestEmberAPI(TestJSONAPI):
 
     def test_include_list_obj(self):
         with self.client as c:
-            rv = c.get(self.get_url('/distributors'),
+            rv = c.get(self.get_url('/products'),
                        headers=self.get_headers(),
-                       query_string={'include': 'products'})
+                       query_string={'include': 'stockLevels'})
             j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue(rv.status_code == 200)
-            self.assertTrue('products' in j)
-            self.assertTrue(len(j['products']) == 2)
+            self.assertTrue('stockLevels' in j)
+            self.assertTrue(len(j['stockLevels']) == 2)
 
     def test_include_obj(self):
         with self.client as c:
@@ -324,6 +373,53 @@ class TestEmberAPI(TestJSONAPI):
             self.assertTrue(rv.status_code == 200)
             self.assertTrue('distributors' in j)
             self.assertTrue(len(j['distributors']) == 1)
+
+    def test_post(self):
+        p_json = {
+            "product": {
+                "distributorCode": "SYSCO",
+                "category": 1,
+                "brand": 1,
+                "distributor": 1,
+                "unit": 1,
+                "name": "Green Lettuce",
+                "description": "Organic green lettuce from the state of CA",
+                "reorderQty": 24,
+                "minOrderQty": 12,
+                "maxOrderQty": 144,
+                "supplierCode": "",
+                "reorderLevel": 12,
+                "leadTime": 5
+            }
+        }
+
+        with self.client as c:
+            rv = c.post(self.get_url('/products'), data=json.dumps(p_json),
+                        headers=self.get_headers())
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
+            self.assertTrue(rv.status_code == 201)
+            self.assertTrue(
+                ('Location', self.get_url('/products/3')) == rv.headers[2])
+            self.assertTrue(j['product']['description'] ==
+                            "Organic green lettuce from the state of CA")
+            self.assertTrue(j['product']['minOrderQty'] == 12)
+
+    def test_put(self):
+        p_json = {
+            "product": {
+                "name": "Greenest Lettuce",
+                "description": "Organic green lettuce from the state of CA",
+                "minOrderQty": 100
+            }
+        }
+        with self.client as c:
+            rv = c.put(self.get_url('/products/1'), data=json.dumps(p_json),
+                       headers=self.get_headers())
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
+            self.assertTrue(j['product']['description'] ==
+                            "Organic green lettuce from the state of CA")
+            self.assertTrue(j['product']['minOrderQty'] == 100)
+            self.assertTrue(rv.status_code == 200)
 
 
 class TestRegisterAPIExcludes(TestAPI):

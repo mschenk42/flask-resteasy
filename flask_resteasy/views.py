@@ -22,7 +22,8 @@ class APIView(MethodView):
         parser = self._cfg.parser_factory.create(self._cfg, **kwargs)
         processor = self._cfg.processor_factory.create(self._cfg, parser)
         if parser.link:
-            link_cfg = self._cfg.api_manager.get_cfg(parser.link)
+            link_cfg = self._cfg.api_manager.get_cfg(
+                self._cfg.resource_name_case(parser.link))
             builder = link_cfg.builder_factory.create(link_cfg, processor)
         else:
             builder = self._cfg.builder_factory.create(self._cfg, processor)
@@ -53,13 +54,14 @@ class APIView(MethodView):
 
 class APIManager(object):
     def __init__(self, app, db, cfg_class=JSONAPIConfig, decorators=None,
-                 excludes=None):
+                 bp=None, excludes=None):
         self._app = None
         self._db = None
         self._model_for_resources = {}
         self._cfg_for_resources = {}
         self._cfg_class = cfg_class
         self._excludes = excludes
+        self._bp = bp
         if decorators:
             APIView.decorators = decorators
         self.init_app(app, db)
@@ -69,18 +71,18 @@ class APIManager(object):
         self._db = db
 
     def _register_cfg(self, view, resource_singular, resource_plural):
-        self._cfg_for_resources[str(resource_singular.lower())] = view
-        self._cfg_for_resources[str(resource_plural.lower())] = view
+        self._cfg_for_resources[resource_singular] = view
+        self._cfg_for_resources[resource_plural] = view
 
     def _register_model(self, model_class, resource_singular, resource_plural):
-        self._model_for_resources[str(resource_singular.lower())] = model_class
-        self._model_for_resources[str(resource_plural.lower())] = model_class
+        self._model_for_resources[resource_singular] = model_class
+        self._model_for_resources[resource_plural] = model_class
 
     def get_cfg(self, resource_name):
-        return self._cfg_for_resources[str(resource_name.lower())]
+        return self._cfg_for_resources[resource_name]
 
     def get_model(self, resource_name):
-        return self._model_for_resources[str(resource_name.lower())]
+        return self._model_for_resources[resource_name]
 
     def get_excludes_for(self, key):
         if self._excludes is not None and key in self._excludes:
@@ -109,7 +111,13 @@ class APIManager(object):
         self._register_model(model_class, cfg.resource_name,
                              cfg.resource_name_plural)
 
-        reg_with = self._app if bp is None else bp
+        if bp is not None:
+            reg_with = bp
+        elif self._bp is not None:
+            reg_with = self._bp
+        else:
+            reg_with = self._app
+
         url = '/%s' % cfg.resource_name_plural
 
         view_func = APIView.as_view(cfg.endpoint_name, cfg)
