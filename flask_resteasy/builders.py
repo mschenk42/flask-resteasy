@@ -52,7 +52,7 @@ class ResponseBuilder(object):
 
         for link in self._rp.linked_objs:
             use_links = self._cfg.use_link_nodes
-            link_key = self._cfg.json_node_case(link)
+            link_key = self._cfg.json_case(link)
             if use_links:
                 json_dic[self._cfg.linked_node] = {}
                 json_dic[self._cfg.linked_node][link_key] = []
@@ -85,7 +85,7 @@ class ResponseBuilder(object):
         convert = self._cfg.model_to_json_type_converters
         if obj is not None:
             for field_name in self._cfg.allowed_from_model:
-                field_name_key = self._cfg.json_node_case(field_name)
+                field_name_key = self._cfg.json_case(field_name)
                 v = getattr(obj, field_name)
                 current_type = self._cfg.field_types[field_name]
                 if current_type in convert and v is not None:
@@ -108,7 +108,7 @@ class ResponseBuilder(object):
             links = self._cfg.allowed_relationships
             dic = {}
             for link in links:
-                link_key = self._cfg.json_node_case(link)
+                link_key = self._cfg.json_case(link)
                 linked_obj = getattr(obj, link)
                 if isinstance(linked_obj, list):
                     l_lst = []

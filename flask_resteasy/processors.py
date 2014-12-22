@@ -102,13 +102,13 @@ class RequestProcessor(object):
 
         def _json_to_model_fields(j_dict_root):
             for c in self._cfg.allowed_to_model:
-                j_key = self._cfg.json_node_case(c)
+                j_key = self._cfg.json_case(c)
                 if j_key in j_dict_root:
                     setattr(model, c, j_dict_root[j_key])
 
         def _json_to_model_links(j_dict_links):
             for c in self._cfg.allowed_relationships:
-                c = self._cfg.json_node_case(c)
+                c = self._cfg.json_case(c)
                 if c in j_dict_links:
                     model_link = j_dict_links[c]
                     if model_link is None:
@@ -151,7 +151,7 @@ class GetRequestProcessor(RequestProcessor):
             assert len(r_objs) > 0, 'No parent resource found for links'
             for r_o in r_objs:
                 l_objs = getattr(r_o,
-                                 self._cfg.model_field_case(self._rp.link))
+                                 self._cfg.model_case(self._rp.link))
                 self._render_as_list = isinstance(l_objs, list)
                 if self._render_as_list:
                     self._resource_objs.extend(l_objs)

@@ -83,7 +83,7 @@ class RequestParser(object):
                 self.include_qp] is not None:
             self._include = self._parse_include(request.args[self.include_qp])
 
-        assert self.link is None or self._cfg.model_field_case(
+        assert self.link is None or self._cfg.model_case(
             self.link) in self._cfg.allowed_relationships, \
             'invalid links resource url'
 
@@ -98,7 +98,7 @@ class RequestParser(object):
             filters = filter_str.split(self.qp_key_pairs_del)
             for f in filters:
                 filter_pair = f.split(self.qp_key_val_del)
-                filter_key = self._cfg.model_field_case(filter_pair[0])
+                filter_key = self._cfg.model_case(filter_pair[0])
                 if filter_key in self._cfg.allowed_filter:
                     rv[filter_key] = filter_pair[1]
         return rv
@@ -116,7 +116,7 @@ class RequestParser(object):
                 else:
                     fld = s
                     order = 'asc'
-                fld = self._cfg.model_field_case(fld)
+                fld = self._cfg.model_case(fld)
                 if fld in self._cfg.allowed_sort:
                     rv[fld] = order
         return rv
@@ -128,7 +128,7 @@ class RequestParser(object):
         else:
             includes = include_str.split(self.qp_key_pairs_del)
             for i in includes:
-                i = self._cfg.model_field_case(i)
+                i = self._cfg.model_case(i)
                 if i in self._cfg.allowed_include:
                     rv.add(i)
         return rv

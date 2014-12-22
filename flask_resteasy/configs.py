@@ -21,6 +21,26 @@ class JSONAPIConfig(object):
         self._api_manager = api_manager
         self._excludes = excludes
 
+        # These attributes are set on access because some
+        # SQLAlchemy models may not be initialized yet.
+        # For example SQLAlchemy backrefs will not be set until the model
+        # creating the backref is initialized.
+        self._all_fields = None
+        self._field_types = None
+        self._relationship_fields = None
+        self._resource_name = None
+        self._resource_name_plural = None
+        self._allowed_to_model = None
+        self._allowed_from_model = None
+        self._allowed_relationships = None
+        self._allowed_sort = None
+        self._allowed_filter = None
+        self._allowed_include = None
+        self._excludes_for_all = None
+        self._private_fields = None
+        self._endpoint_name = None
+        self._relationships = None
+
     @property
     def model_class(self):
         return self._model
@@ -39,185 +59,215 @@ class JSONAPIConfig(object):
 
     @property
     def all_fields(self):
-        return self._all_fields()
+        return self._get_all_fields()
 
     @property
     def relationship_fields(self):
-        return self._relationship_fields()
+        return self._get_relationship_fields()
 
     @property
     def private_fields(self):
-        return self._private_fields()
+        return self._get_private_fields()
 
     @property
     def field_types(self):
-        return self._field_types()
+        return self._get_field_types()
 
     @property
     def relationships(self):
-        return self._relationships()
+        return self._get_relationships()
 
     @property
     def allowed_from_model(self):
-        return self._allowed_from_model()
+        return self._get_allowed_from_model()
 
     @property
     def allowed_to_model(self):
-        return self._allowed_to_model()
+        return self._get_allowed_to_model()
 
     @property
     def allowed_relationships(self):
-        return self._allowed_relationships()
+        return self._get_allowed_relationships()
 
     @property
     def allowed_sort(self):
-        return self._allowed_sort()
+        return self._get_allowed_sort()
 
     @property
     def allowed_filter(self):
-        return self._allowed_filter()
+        return self._get_allowed_filter()
 
     @property
     def allowed_include(self):
-        return self._allowed_include()
+        return self._get_allowed_include()
 
     @property
-    def json_node_case(self):
-        return self._json_node_case()
+    def json_case(self):
+        return self._get_json_case()
 
     @property
-    def model_field_case(self):
-        return self._model_field_case()
+    def model_case(self):
+        return self._get_model_case()
 
     @property
     def model_to_json_type_converters(self):
-        return self._model_to_json_type_converters()
+        return self._get_model_to_json_type_converters()
 
     @property
     def private_field_prefix(self):
-        return self._private_field_prefix()
+        return self._get_private_field_prefix()
 
     @property
     def relationship_field_id_postfix(self):
-        return self._relationship_field_id_postfix()
+        return self._get_relationship_field_id_postfix()
 
     @property
     def id_field(self):
-        return self._id_field()
+        return self._get_id_field()
 
     @property
     def resource_name(self):
-        return self._resource_name()
+        return self._get_resource_name()
 
     @property
     def resource_name_case(self):
-        return self._resource_name_case()
+        return self._get_resource_name_case()
 
     @property
     def resource_name_plural(self):
-        return self._resource_name_plural()
+        return self._get_resource_name_plural()
 
     @property
     def endpoint_name(self):
-        return self._endpoint_name()
+        return self._get_endpoint_name()
 
     @property
     def use_link_nodes(self):
-        return self._use_link_nodes()
+        return self._get_use_link_nodes()
 
     @property
     def id_route_param(self):
-        return self._id_route_param()
+        return self._get_id_route_param()
 
     @property
     def link_route_param(self):
-        return self._link_route_param()
+        return self._get_link_route_param()
 
     @property
     def links_node(self):
-        return self._links_node()
+        return self._get_links_node()
 
     @property
     def linked_node(self):
-        return self._linked_node()
+        return self._get_linked_node()
 
     @property
     def parser_factory(self):
-        return self._parser_factory()
+        return self._get_parser_factory()
 
     @property
     def processor_factory(self):
-        return self._processor_factory()
+        return self._get_processor_factory()
 
     @property
     def builder_factory(self):
-        return self._builder_factory()
+        return self._get_builder_factory()
 
     @staticmethod
-    def _model_field_case():
+    def _get_model_case():
         return lambda s: underscore(s)
 
     @staticmethod
-    def _json_node_case():
+    def _get_json_case():
         return lambda s: underscore(s)
 
     @staticmethod
-    def _model_to_json_type_converters():
+    def _get_model_to_json_type_converters():
         return {"DATETIME": datetime.datetime.isoformat}
 
-    def _all_fields(self):
-        return set([c.name for c in self.model_class.__table__.columns])
+    def _get_all_fields(self):
+        if self._all_fields is None:
+            self._all_fields = set(
+                [c.name for c in self.model_class.__table__.columns])
+        return self._all_fields
 
-    def _field_types(self):
-        return {c.name: str(c.type)
-                for c in self.model_class.__table__.columns}
+    def _get_field_types(self):
+        if self._field_types is None:
+            self._field_types = {c.name: str(c.type)
+                                 for c in self.model_class.__table__.columns}
+        return self._field_types
 
-    def _relationship_fields(self):
-        return set([n for n in self.all_fields if
-                    n.endswith(self.relationship_field_id_postfix)])
+    def _get_relationship_fields(self):
+        if self._relationship_fields is None:
+            self._relationship_fields = set(
+                [n for n in self.all_fields
+                 if n.endswith(self.relationship_field_id_postfix)])
+        return self._relationship_fields
 
     @staticmethod
-    def _resource_name_case():
+    def _get_resource_name_case():
         return lambda s: underscore(s)
 
-    def _resource_name(self):
-        return self.resource_name_case(
-            singularize(str(self.model_class.__table__.name.lower())))
+    def _get_resource_name(self):
+        if self._resource_name is None:
+            self._resource_name = self.resource_name_case(
+                singularize(str(self.model_class.__table__.name.lower())))
+        return self._resource_name
 
-    def _resource_name_plural(self):
-        return pluralize(self.resource_name)
+    def _get_resource_name_plural(self):
+        if self._resource_name_plural is None:
+            self._resource_name_plural = pluralize(self.resource_name)
+        return self._resource_name_plural
 
-    def _allowed_to_model(self):
-        return set(map(self._model_field_case(),
-                   (self.all_fields - self.private_fields -
-                    self.relationship_fields - {self.id_field} -
-                    self._get_excludes_for('to_model'))))
+    def _get_allowed_to_model(self):
+        if self._allowed_to_model is None:
+            self._allowed_to_model = set(
+                map(self._get_model_case(),
+                    (self.all_fields - self.private_fields -
+                     self.relationship_fields - {self.id_field} -
+                     self._get_excludes_for('to_model'))))
+        return self._allowed_to_model
 
-    def _allowed_from_model(self):
-        return set(map(self._model_field_case(),
-                   (self.all_fields - self.private_fields -
-                    self.relationship_fields -
-                    self._get_excludes_for('from_model'))))
+    def _get_allowed_from_model(self):
+        if self._allowed_from_model is None:
+            self._allowed_from_model = set(
+                map(self._get_model_case(),
+                    (self.all_fields - self.private_fields -
+                     self.relationship_fields -
+                     self._get_excludes_for('from_model'))))
+        return self._allowed_from_model
 
-    def _allowed_relationships(self):
-        return set(map(self._model_field_case(),
-                       (self._relationships() -
-                        self._get_excludes_for('relationship'))))
+    def _get_allowed_relationships(self):
+        if self._allowed_relationships is None:
+            self._allowed_relationships = set(
+                map(self._get_model_case(),
+                    (self._get_relationships() -
+                    self._get_excludes_for('relationship'))))
+        return self._allowed_relationships
 
-    def _allowed_sort(self):
-        return set(map(self._model_field_case(),
-                       self._allowed_from_model() -
-                       self._get_excludes_for('sort')))
+    def _get_allowed_sort(self):
+        if self._allowed_sort is None:
+            self._allowed_sort = set(
+                map(self._get_model_case(),
+                    self._get_allowed_from_model() -
+                    self._get_excludes_for('sort')))
+        return self._allowed_sort
 
-    def _allowed_filter(self):
-        return set(map(self._model_field_case(),
-                       self._allowed_from_model() -
-                       self._get_excludes_for('filter')))
+    def _get_allowed_filter(self):
+        if self._allowed_filter is None:
+            self._allowed_filter = set(
+                map(self._get_model_case(),
+                    self._get_allowed_from_model() -
+                    self._get_excludes_for('filter')))
+        return self._allowed_filter
 
-    def _allowed_include(self):
-        return set(map(self._model_field_case(),
-                       (self._allowed_relationships() -
-                        self._get_excludes_for('include'))))
+    def _get_allowed_include(self):
+        if self._allowed_include is None:
+            self._allowed_include = set(
+                map(self._get_model_case(),
+                    (self._get_allowed_relationships() -
+                    self._get_excludes_for('include'))))
+        return self._allowed_include
 
     def _get_excludes_for(self, key):
         if self._excludes is not None and key in self._excludes:
@@ -229,74 +279,84 @@ class JSONAPIConfig(object):
                     self.api_manager.get_excludes_for(key))
 
     def _get_excludes_for_all(self):
-        if self._excludes is not None and 'all' in self._excludes:
-            return set(self._excludes['all'])
-        else:
-            return set([])
+        if self._excludes_for_all is None:
+            if self._excludes is not None and 'all' in self._excludes:
+                self._excludes_for_all = set(self._excludes['all'])
+            else:
+                self._excludes_for_all = set([])
+        return self._excludes_for_all
 
-    def _private_fields(self):
-        return set([n for n in self.all_fields
-                    if n.startswith(self.private_field_prefix)])
+    def _get_private_fields(self):
+        if self._private_fields is None:
+            self._private_fields = set(
+                [n for n in self.all_fields
+                 if n.startswith(self.private_field_prefix)])
+        return self._private_fields
 
-    def _endpoint_name(self):
-        return ''.join([self.resource_name, '_api'])
+    def _get_endpoint_name(self):
+        if self._endpoint_name is None:
+            self._endpoint_name = ''.join([self.resource_name, '_api'])
+        return self._endpoint_name
 
-    def _relationships(self):
-        return set([n for n in self.model_class._sa_class_manager
-                    if n not in self.all_fields])
+    def _get_relationships(self):
+        if self._relationships is None:
+            self._relationships = set(
+                [n for n in self.model_class._sa_class_manager
+                 if n not in self.all_fields])
+        return self._relationships
 
-    def _use_link_nodes(self):
+    def _get_use_link_nodes(self):
         return True
 
     @staticmethod
-    def _id_field():
+    def _get_id_field():
         return 'id'
 
     @staticmethod
-    def _relationship_field_id_postfix():
+    def _get_relationship_field_id_postfix():
         return '_id'
 
     @staticmethod
-    def _private_field_prefix():
+    def _get_private_field_prefix():
         return '_'
 
     @staticmethod
-    def _id_route_param():
+    def _get_id_route_param():
         return 'ident'
 
     @staticmethod
-    def _link_route_param():
+    def _get_link_route_param():
         return 'link'
 
     @staticmethod
-    def _links_node():
+    def _get_links_node():
         return 'links'
 
     @staticmethod
-    def _linked_node():
+    def _get_linked_node():
         return 'linked'
 
     @staticmethod
-    def _parser_factory():
+    def _get_parser_factory():
         return ParserFactory
 
     @staticmethod
-    def _processor_factory():
+    def _get_processor_factory():
         return ProcessorFactory
 
     @staticmethod
-    def _builder_factory():
+    def _get_builder_factory():
         return BuilderFactory
 
 
 class EmberConfig(JSONAPIConfig):
-    def _use_link_nodes(self):
+    def _get_use_link_nodes(self):
         return False
 
     @staticmethod
-    def _json_node_case():
+    def _get_json_case():
         return lambda s: camelize(s, False)
 
     @staticmethod
-    def _resource_name_case():
+    def _get_resource_name_case():
         return lambda s: camelize(s, False)
