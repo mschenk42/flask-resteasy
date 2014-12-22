@@ -15,8 +15,8 @@ class RequestProcessor(object):
     def __init__(self, cfg, request_parser):
         self._cfg = cfg
         self._rp = request_parser
-        self._resource_objs = []
-        self._linked_objs = {}
+        self._resources = []
+        self._links = {}
         self._render_as_list = False
         self._process()
 
@@ -25,19 +25,19 @@ class RequestProcessor(object):
         pass
 
     @property
-    def resource_objs(self):
-        return self._resource_objs
+    def resources(self):
+        return self._resources
 
     @property
     def render_as_list(self):
         return self._render_as_list
 
     @property
-    def linked_objs(self):
-        return self._linked_objs
+    def links(self):
+        return self._links
 
     @property
-    def root_name(self):
+    def resource_name(self):
         if self._rp.link is None:
             return (self._cfg.resource_name_plural
                     if self._render_as_list else self._cfg.resource_name)
@@ -101,40 +101,38 @@ class RequestProcessor(object):
     def _json_to_model(self, j_dict, model):
 
         def _json_to_model_fields(j_dict_root):
-            for c in self._cfg.allowed_to_model:
-                j_key = self._cfg.json_case(c)
+            for fld in self._cfg.allowed_to_model:
+                j_key = self._cfg.json_case(fld)
                 if j_key in j_dict_root:
-                    setattr(model, c, j_dict_root[j_key])
+                    setattr(model, fld, j_dict_root[j_key])
 
         def _json_to_model_links(j_dict_links):
-            for c in self._cfg.allowed_relationships:
-                c = self._cfg.json_case(c)
-                if c in j_dict_links:
-                    model_link = j_dict_links[c]
+            for rel in self._cfg.allowed_relationships:
+                j_key = self._cfg.json_case(rel)
+                if j_key in j_dict_links:
+                    model_link = j_dict_links[j_key]
                     if model_link is None:
                         continue
                     elif isinstance(model_link, list):
                         lst = self._get_all(
                             model_link,
                             self._cfg.api_manager.get_model(
-                                self._cfg.resource_name_case(c)))
-                        getattr(model, c).extend(lst)
+                                self._cfg.resource_name_case(j_key)))
+                        getattr(model, j_key).extend(lst)
                     else:
-                        setattr(model, c,
+                        setattr(model, j_key,
                                 self._get_or_404(
                                     model_link,
                                     self._cfg.api_manager.get_model(
-                                        self._cfg.resource_name_case(c))))
+                                        self._cfg.resource_name_case(j_key))))
 
-        for root in j_dict:
-            _json_to_model_fields(j_dict[root])
-            if self._cfg.use_link_nodes:
-                if self._cfg.links_node in j_dict[root]:
-                    _json_to_model_links(j_dict[root][self._cfg.links_node])
-                else:
-                    _json_to_model_links(j_dict[root])
+        for j_node in j_dict:
+            _json_to_model_fields(j_dict[j_node])
+            if self._cfg.use_link_nodes \
+                    and self._cfg.links_node in j_dict[j_node]:
+                _json_to_model_links(j_dict[j_node][self._cfg.links_node])
             else:
-                _json_to_model_links(j_dict[root])
+                _json_to_model_links(j_dict[j_node])
 
 
 class GetRequestProcessor(RequestProcessor):
@@ -143,44 +141,43 @@ class GetRequestProcessor(RequestProcessor):
 
     def _process(self):
         if len(self._rp.idents) > 0:
-            r_objs = self._get_all(self._rp.idents)
+            resources = self._get_all(self._rp.idents)
         else:
-            r_objs = self._all()
+            resources = self._all()
 
         if self._rp.link:
-            assert len(r_objs) > 0, 'No parent resource found for links'
-            for r_o in r_objs:
-                l_objs = getattr(r_o,
-                                 self._cfg.model_case(self._rp.link))
-                self._render_as_list = isinstance(l_objs, list)
+            assert len(resources) > 0, 'No parent resource found for links'
+            for resc in resources:
+                links = getattr(resc, self._cfg.model_case(self._rp.link))
+                self._render_as_list = isinstance(links, list)
                 if self._render_as_list:
-                    self._resource_objs.extend(l_objs)
+                    self._resources.extend(links)
                 else:
-                    self._resource_objs.append(l_objs)
-                self._process_includes_for(l_objs)
+                    self._resources.append(links)
+                self._process_includes_for(links)
         else:
-            self._process_includes_for(r_objs)
+            self._process_includes_for(resources)
             self._render_as_list = len(self._rp.idents) != 1
-            self._resource_objs.extend(r_objs)
+            self._resources.extend(resources)
 
-    def _process_includes_for(self, obj):
+    def _process_includes_for(self, resources):
 
-        def set_include(parent_obj, inc):
-            if hasattr(parent_obj, inc):
+        def set_include(resc, inc):
+            if hasattr(resc, inc):
                 k = pluralize(inc)
-                if k not in self._linked_objs:
-                    self._linked_objs[k] = []
-                self._linked_objs[k].append(getattr(parent_obj, inc))
+                if k not in self._links:
+                    self._links[k] = []
+                self._links[k].append(getattr(resc, inc))
 
         if self._rp.include:
             for include in self._rp.include:
                 if include not in self._cfg.allowed_relationships:
                     continue
-                if isinstance(obj, list):
-                    for o in obj:
-                        set_include(o, include)
+                if isinstance(resources, list):
+                    for resource in resources:
+                        set_include(resource, include)
                 else:
-                    set_include(obj, include)
+                    set_include(resources, include)
 
 
 class DeleteRequestProcessor(RequestProcessor):
@@ -205,7 +202,7 @@ class PostRequestProcessor(RequestProcessor):
             model = self._cfg.model_class()
             self._json_to_model(json, model)
         self._cfg.db.session.commit()
-        self._resource_objs.append(model)
+        self._resources.append(model)
 
 
 class PutRequestProcessor(RequestProcessor):
@@ -219,4 +216,4 @@ class PutRequestProcessor(RequestProcessor):
             model = self._get_or_404(self._rp.idents[0])
             self._json_to_model(json, model)
         self._cfg.db.session.commit()
-        self.resource_objs.append(model)
+        self.resources.append(model)
