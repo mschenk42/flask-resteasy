@@ -86,10 +86,11 @@ class TestAPI(unittest.TestCase):
             'sqlite:///' + os.path.join(basedir, 'data-test.sqlite')
         db.init_app(app)
 
+        cls.ctx = app.app_context()
+        cls.ctx.push()
+        cls.client = app.test_client()
+
     def setUp(self):
-        self.ctx = app.app_context()
-        self.ctx.push()
-        self.client = app.test_client()
         self.create_db()
 
     def tearDown(self):
@@ -242,6 +243,13 @@ class TestJSONAPI(TestAPI):
                             "Organic green lettuce from the state of CA")
             self.assertTrue(j['product']['min_order_qty'] == 12)
 
+            rv = c.get(self.get_url('/products/3'), headers=self.get_headers())
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
+            self.assertTrue(rv.status_code == 200)
+            self.assertTrue(j['product']['description'] ==
+                            "Organic green lettuce from the state of CA")
+            self.assertTrue(j['product']['min_order_qty'] == 12)
+
     def test_put(self):
         p_json = {
             "product": {
@@ -253,11 +261,18 @@ class TestJSONAPI(TestAPI):
         with self.client as c:
             rv = c.put(self.get_url('/products/1'), data=json.dumps(p_json),
                        headers=self.get_headers())
+            self.assertTrue(rv.status_code == 200)
             j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue(j['product']['description'] ==
                             "Organic green lettuce from the state of CA")
             self.assertTrue(j['product']['min_order_qty'] == 100)
+
+            rv = c.get(self.get_url('/products/1'), headers=self.get_headers())
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue(rv.status_code == 200)
+            self.assertTrue(j['product']['description'] ==
+                            "Organic green lettuce from the state of CA")
+            self.assertTrue(j['product']['min_order_qty'] == 100)
 
     def test_delete(self):
         with self.client as c:
@@ -392,6 +407,13 @@ class TestEmberAPI(TestJSONAPI):
                             "Organic green lettuce from the state of CA")
             self.assertTrue(j['product']['minOrderQty'] == 12)
 
+            rv = c.get(self.get_url('/products/3'), headers=self.get_headers())
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
+            self.assertTrue(rv.status_code == 200)
+            self.assertTrue(j['product']['description'] ==
+                            "Organic green lettuce from the state of CA")
+            self.assertTrue(j['product']['minOrderQty'] == 12)
+
     def test_put(self):
         p_json = {
             "product": {
@@ -404,10 +426,17 @@ class TestEmberAPI(TestJSONAPI):
             rv = c.put(self.get_url('/products/1'), data=json.dumps(p_json),
                        headers=self.get_headers())
             j = json.loads(rv.data.decode(encoding='UTF-8'))
+            self.assertTrue(rv.status_code == 200)
             self.assertTrue(j['product']['description'] ==
                             "Organic green lettuce from the state of CA")
             self.assertTrue(j['product']['minOrderQty'] == 100)
+
+            rv = c.get(self.get_url('/products/1'), headers=self.get_headers())
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue(rv.status_code == 200)
+            self.assertTrue(j['product']['description'] ==
+                            "Organic green lettuce from the state of CA")
+            self.assertTrue(j['product']['minOrderQty'] == 100)
 
 
 class TestRegisterAPIExcludes(TestAPI):
