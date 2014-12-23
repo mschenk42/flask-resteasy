@@ -167,7 +167,8 @@ class TestJSONAPI(TestAPI):
     @classmethod
     def setUpClass(cls):
         super(TestJSONAPI, cls).setUpClass()
-        api_manager = APIManager(app, db, cfg_class=JSONAPIConfig)
+        api_manager = APIManager(app, db, cfg_class=JSONAPIConfig,
+                                 methods=['GET', 'PUT', 'POST', 'DELETE'])
         api_manager.register_api(TestAPI.Product)
         api_manager.register_api(TestAPI.Distributor)
         api_manager.register_api(TestAPI.StockCount)
@@ -177,24 +178,24 @@ class TestJSONAPI(TestAPI):
         with self.client as c:
             rv = c.get(self.get_url('/products/1/links/distributor'),
                        headers=self.get_headers())
-            j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue(rv.status_code == 200)
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue('distributor' in j)
             self.assertTrue(isinstance(j['distributor'], dict))
 
     def test_get_all(self):
         with self.client as c:
             rv = c.get(self.get_url('/products'), headers=self.get_headers())
-            j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue(rv.status_code == 200)
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue('products' in j)
             self.assertTrue(len(j['products']) == 2)
 
     def test_get(self):
         with self.client as c:
             rv = c.get(self.get_url('/products/1'), headers=self.get_headers())
-            j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue(rv.status_code == 200)
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue('product' in j)
             self.assertTrue(isinstance(j['product'], dict))
 
@@ -208,8 +209,8 @@ class TestJSONAPI(TestAPI):
         with self.client as c:
             rv = c.get(self.get_url('/products/1,2'),
                        headers=self.get_headers())
-            j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue(rv.status_code == 200)
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue('products' in j)
             self.assertTrue(len(j['products']) == 2)
 
@@ -235,8 +236,8 @@ class TestJSONAPI(TestAPI):
         with self.client as c:
             rv = c.post(self.get_url('/products'), data=json.dumps(p_json),
                         headers=self.get_headers())
-            j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue(rv.status_code == 201)
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue(
                 ('Location', self.get_url('/products/3')) == rv.headers[2])
             self.assertTrue(j['product']['description'] ==
@@ -268,8 +269,8 @@ class TestJSONAPI(TestAPI):
             self.assertTrue(j['product']['min_order_qty'] == 100)
 
             rv = c.get(self.get_url('/products/1'), headers=self.get_headers())
-            j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue(rv.status_code == 200)
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue(j['product']['description'] ==
                             "Organic green lettuce from the state of CA")
             self.assertTrue(j['product']['min_order_qty'] == 100)
@@ -287,8 +288,8 @@ class TestJSONAPI(TestAPI):
             rv = c.get(self.get_url('/products'),
                        headers=self.get_headers(),
                        query_string={'filter': 'name:Green Lettuce'})
-            j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue(rv.status_code == 200)
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue('products' in j)
             self.assertTrue(j['products'][0]['name'] == 'Green Lettuce')
             self.assertTrue(len(j['products']) == 1)
@@ -298,8 +299,8 @@ class TestJSONAPI(TestAPI):
             rv = c.get(self.get_url('/products'),
                        headers=self.get_headers(),
                        query_string={'sort': '-name'})
-            j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue(rv.status_code == 200)
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue('products' in j)
             self.assertTrue(j['products'][0]['name'] == 'Red Leaf Lettuce')
             self.assertTrue(len(j['products']) == 2)
@@ -309,8 +310,8 @@ class TestJSONAPI(TestAPI):
             rv = c.get(self.get_url('/products'),
                        headers=self.get_headers(),
                        query_string={'sort': 'name'})
-            j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue(rv.status_code == 200)
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue('products' in j)
             self.assertTrue(j['products'][0]['name'] == 'Green Lettuce')
             self.assertTrue(len(j['products']) == 2)
@@ -320,8 +321,8 @@ class TestJSONAPI(TestAPI):
             rv = c.get(self.get_url('/products'),
                        headers=self.get_headers(),
                        query_string={'include': 'stock_levels'})
-            j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue(rv.status_code == 200)
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue('linked' in j)
             self.assertTrue('stock_levels' in j['linked'])
             self.assertTrue(len(j['linked']['stock_levels']) == 2)
@@ -331,8 +332,8 @@ class TestJSONAPI(TestAPI):
             rv = c.get(self.get_url('/products'),
                        headers=self.get_headers(),
                        query_string={'include': 'distributor'})
-            j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue(rv.status_code == 200)
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue('linked' in j)
             self.assertTrue('distributors' in j['linked'])
             self.assertTrue(len(j['linked']['distributors']) == 1)
@@ -342,7 +343,8 @@ class TestEmberAPI(TestJSONAPI):
     @classmethod
     def setUpClass(cls):
         super(TestJSONAPI, cls).setUpClass()
-        api_manager = APIManager(app, db, cfg_class=EmberConfig)
+        api_manager = APIManager(app, db, cfg_class=EmberConfig,
+                                 methods=['GET', 'PUT', 'POST', 'DELETE'])
         api_manager.register_api(TestAPI.Product)
         api_manager.register_api(TestAPI.Distributor)
         api_manager.register_api(TestAPI.StockCount)
@@ -352,8 +354,8 @@ class TestEmberAPI(TestJSONAPI):
         with self.client as c:
             rv = c.get(self.get_url('/products/1/distributor'),
                        headers=self.get_headers())
-            j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue(rv.status_code == 200)
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue('distributor' in j)
             self.assertTrue(isinstance(j['distributor'], dict))
 
@@ -362,8 +364,8 @@ class TestEmberAPI(TestJSONAPI):
             rv = c.get(self.get_url('/products'),
                        headers=self.get_headers(),
                        query_string={'include': 'stockLevels'})
-            j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue(rv.status_code == 200)
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue('stockLevels' in j)
             self.assertTrue(len(j['stockLevels']) == 2)
 
@@ -372,8 +374,8 @@ class TestEmberAPI(TestJSONAPI):
             rv = c.get(self.get_url('/products'),
                        headers=self.get_headers(),
                        query_string={'include': 'distributor'})
-            j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue(rv.status_code == 200)
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue('distributors' in j)
             self.assertTrue(len(j['distributors']) == 1)
 
@@ -399,8 +401,8 @@ class TestEmberAPI(TestJSONAPI):
         with self.client as c:
             rv = c.post(self.get_url('/products'), data=json.dumps(p_json),
                         headers=self.get_headers())
-            j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue(rv.status_code == 201)
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue(
                 ('Location', self.get_url('/products/3')) == rv.headers[2])
             self.assertTrue(j['product']['description'] ==
@@ -408,8 +410,8 @@ class TestEmberAPI(TestJSONAPI):
             self.assertTrue(j['product']['minOrderQty'] == 12)
 
             rv = c.get(self.get_url('/products/3'), headers=self.get_headers())
-            j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue(rv.status_code == 200)
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue(j['product']['description'] ==
                             "Organic green lettuce from the state of CA")
             self.assertTrue(j['product']['minOrderQty'] == 12)
@@ -425,15 +427,15 @@ class TestEmberAPI(TestJSONAPI):
         with self.client as c:
             rv = c.put(self.get_url('/products/1'), data=json.dumps(p_json),
                        headers=self.get_headers())
-            j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue(rv.status_code == 200)
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue(j['product']['description'] ==
                             "Organic green lettuce from the state of CA")
             self.assertTrue(j['product']['minOrderQty'] == 100)
 
             rv = c.get(self.get_url('/products/1'), headers=self.get_headers())
-            j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue(rv.status_code == 200)
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue(j['product']['description'] ==
                             "Organic green lettuce from the state of CA")
             self.assertTrue(j['product']['minOrderQty'] == 100)
@@ -452,8 +454,47 @@ class TestRegisterAPIExcludes(TestAPI):
     def test_get_with_excludes(self):
         with self.client as c:
             rv = c.get(self.get_url('/products/1'), headers=self.get_headers())
-            j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue(rv.status_code == 200)
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue('product' in j)
             self.assertTrue(isinstance(j['product'], dict))
             self.assertTrue('reorder_qty' not in j['product'])
+
+
+class TestMethodRegistration(TestAPI):
+    def test_default_method_registration(self):
+        p_json = {
+            "product": {
+                "distributor_code": "SYSCO",
+                "category": 1,
+                "brand": 1,
+                "distributor": 1,
+                "unit": 1,
+                "name": "Green Lettuce",
+                "description": "Organic green lettuce from the state of CA",
+                "reorder_qty": 24,
+                "min_order_qty": 12,
+                "max_order_qty": 144,
+                "supplier_code": "",
+                "reorder_level": 12,
+                "lead_time": 5
+            }
+        }
+        api_manager = APIManager(app, db, cfg_class=JSONAPIConfig)
+        api_manager.register_api(TestAPI.Product)
+        api_manager.register_api(TestAPI.Distributor)
+        api_manager.register_api(TestAPI.StockCount)
+        api_manager.register_api(TestAPI.StockLevel)
+
+        with self.client as c:
+            rv = c.get(self.get_url('/products/1'), headers=self.get_headers())
+            self.assertTrue(rv.status_code == 200)
+            rv = c.post(self.get_url('/products'), data=json.dumps(p_json),
+                        headers=self.get_headers())
+            self.assertTrue(rv.status_code == 405)
+            rv = c.put(self.get_url('/products/1'), data=json.dumps(p_json),
+                       headers=self.get_headers())
+            self.assertTrue(rv.status_code == 405)
+            rv = c.delete(self.get_url('/products/1'),
+                          headers=self.get_headers())
+            self.assertTrue(rv.status_code == 405)

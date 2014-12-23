@@ -54,7 +54,7 @@ class APIView(MethodView):
 
 class APIManager(object):
     def __init__(self, app, db, cfg_class=JSONAPIConfig, decorators=None,
-                 bp=None, excludes=None):
+                 bp=None, excludes=None, methods=None):
         self._app = None
         self._db = None
         self._model_for_resources = {}
@@ -62,6 +62,10 @@ class APIManager(object):
         self._cfg_class = cfg_class
         self._excludes = excludes
         self._bp = bp
+        if methods:
+            self._methods = set(methods)
+        else:
+            self._methods = {'GET'}
         if decorators:
             APIView.decorators = decorators
         self.init_app(app, db)
@@ -96,11 +100,12 @@ class APIManager(object):
         else:
             return set([])
 
-    def register_api(self, model_class, cfg_class=None, reg_methods=None,
+    def register_api(self, model_class, cfg_class=None, methods=None,
                      bp=None, excludes=None):
-
-        if reg_methods is None:
-            reg_methods = HTTP_METHODS
+        if methods:
+            methods = set(methods)
+        else:
+            methods = self._methods
 
         if cfg_class is None:
             cfg_class = self._cfg_class
@@ -122,30 +127,30 @@ class APIManager(object):
 
         view_func = APIView.as_view(cfg.endpoint_name, cfg)
 
-        methods = list({'GET', 'POST'} & reg_methods)
-        if len(methods) > 0:
+        reg_methods = list({'GET', 'POST'} & methods)
+        if len(reg_methods) > 0:
             reg_with.add_url_rule(url,
                                   view_func=view_func,
-                                  methods=methods)
+                                  methods=reg_methods)
 
-        methods = list({'GET', 'PUT', 'DELETE'} & reg_methods)
-        if len(methods) > 0:
+        reg_methods = list({'GET', 'PUT', 'DELETE'} & methods)
+        if len(reg_methods) > 0:
             reg_with.add_url_rule('%s/<%s>' % (url, cfg.id_route_param),
                                   view_func=view_func,
-                                  methods=methods)
+                                  methods=reg_methods)
 
-        methods = list({'GET'} & reg_methods)
-        if len(methods) > 0:
+        reg_methods = list({'GET'} & methods)
+        if len(reg_methods) > 0:
             if cfg.use_link_nodes:
                     reg_with.add_url_rule('%s/<%s>/%s/<%s>' %
                                           (url, cfg.id_route_param,
                                            cfg.links_node,
                                            cfg.link_route_param),
                                           view_func=view_func,
-                                          methods=methods)
+                                          methods=reg_methods)
             else:
                 reg_with.add_url_rule('%s/<%s>/<%s>' %
                                       (url, cfg.id_route_param,
                                        cfg.link_route_param),
                                       view_func=view_func,
-                                      methods=methods)
+                                      methods=reg_methods)
