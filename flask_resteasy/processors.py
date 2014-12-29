@@ -182,22 +182,22 @@ class GetRequestProcessor(RequestProcessor):
 
     def _process_includes_for(self, resources):
 
-        def set_include(resc, inc):
-            if hasattr(resc, inc):
-                k = pluralize(inc)
-                if k not in self._links:
-                    self._links[k] = []
-                self._links[k].append(getattr(resc, inc))
-
         if self._rp.include:
             for include in self._rp.include:
                 if include not in self._cfg.allowed_relationships:
                     continue
                 if isinstance(resources, list):
                     for resource in resources:
-                        set_include(resource, include)
+                        self._set_include(resource, include)
                 else:
-                    set_include(resources, include)
+                    self._set_include(resources, include)
+
+    def _set_include(self, resc, inc):
+        if hasattr(resc, inc):
+            k = pluralize(inc)
+            if k not in self._links:
+                self._links[k] = []
+            self._links[k].append(getattr(resc, inc))
 
 
 class DeleteRequestProcessor(RequestProcessor):

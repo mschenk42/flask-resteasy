@@ -47,20 +47,9 @@ class ResponseBuilder(object):
 
     def _build_includes(self, json_dic):
 
-        def _build_linked_obj(o, link_key, ids_processed):
-            ident = getattr(o, self._cfg.id_field)
-            if ident not in ids_processed:
-                d = self._resource_to_jdic(o)
-                if use_links:
-                    json_dic[self._cfg.linked_node][link_key].append(d)
-                else:
-                    json_dic[link_key].append(d)
-                ids_processed.add(ident)
-
         for link in self._rp.links:
-            use_links = self._cfg.use_link_nodes
             link_key = self._cfg.json_case(link)
-            if use_links:
+            if self._cfg.use_link_nodes:
                 json_dic[self._cfg.linked_node] = {}
                 json_dic[self._cfg.linked_node][link_key] = []
             else:
@@ -73,14 +62,26 @@ class ResponseBuilder(object):
                 self._cfg = self._cfg.api_manager.get_cfg(
                     self._cfg.resource_name_case(link))
                 ids_processed = set()
-                for obj in self._rp.links[link]:
-                    if isinstance(obj, list):
-                        for o in obj:
-                            _build_linked_obj(o, link_key, ids_processed)
+                for link_obj in self._rp.links[link]:
+                    if isinstance(link_obj, list):
+                        for obj in link_obj:
+                            self._build_linked_obj(obj, link_key,
+                                                   ids_processed, json_dic)
                     else:
-                        _build_linked_obj(obj, link_key, ids_processed)
+                        self._build_linked_obj(link_obj, link_key,
+                                               ids_processed, json_dic)
             finally:
                 self._cfg = parent_cfg
+
+    def _build_linked_obj(self, obj, link_key, ids_processed, json_dic):
+        ident = getattr(obj, self._cfg.id_field)
+        if ident not in ids_processed:
+            d = self._resource_to_jdic(obj)
+            if self._cfg.use_link_nodes:
+                json_dic[self._cfg.linked_node][link_key].append(d)
+            else:
+                json_dic[link_key].append(d)
+            ids_processed.add(ident)
 
     def _resource_to_jdic(self, resource):
         dic = self._resource_fields_to_jdic(resource)

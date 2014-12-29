@@ -54,8 +54,8 @@ class APIConfig(object):
          {'to_model': ['created', 'updated'], 'from_model': ['password']}
 
          Exclusions can be set when registering endpoints by calling
-         :meth:`views.APIManager.register_api` or for all endpoints when
-         creating the :class:`views.APIManager`.
+         :meth:`flask_resteasy.views.APIManager.register_api` or for all
+         endpoints when creating the :class:`flask_resteasy.views.APIManager`.
     """
     def __init__(self, model_class, app, db, api_manager, excludes):
         self._model = model_class
@@ -66,8 +66,8 @@ class APIConfig(object):
 
         # These attributes are set on access because some
         # SQLAlchemy models may not be initialized yet.
-        # For example SQLAlchemy backrefs will not be set until the model
-        # creating the backref is initialized.
+        # For example SQLAlchemy back refs will not be set until the model
+        # creating the back ref is initialized.
         self._all_fields = None
         self._field_types = None
         self._relationship_fields = None
@@ -137,7 +137,7 @@ class APIConfig(object):
     def relationships(self):
         """Relationships defined for the :attr:`model_class`. These are
         links to other model instances, either directly or via a list object.
-        Note this also includes an backrefs created from other models.
+        Note this also includes an back refs created from other models.
         """
         return self._get_relationships()
 
@@ -429,6 +429,8 @@ class APIConfig(object):
 
     def _get_relationships(self):
         if self._relationships is None:
+            # _sa_class_manager may not be the sanctioned way
+            # to lookup relationships, since it's protected
             self._relationships = set(
                 [n for n in self.model_class._sa_class_manager
                  if n not in self.all_fields])

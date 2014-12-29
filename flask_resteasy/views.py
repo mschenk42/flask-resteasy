@@ -32,6 +32,10 @@ class APIView(MethodView):
         """Handles HTTP GET requests. The behavior of this method
         can be changed by providing your own factories for
         parsers, processors and builders.
+
+        :param kwargs: dictionary of keyword arguments which contains
+                       route parameters and query parameters for the
+                       current HTTP request
         """
         parser = self._cfg.parser_factory.create(self._cfg, **kwargs)
         processor = self._cfg.processor_factory.create(self._cfg, parser)
@@ -60,6 +64,10 @@ class APIView(MethodView):
         """Handles HTTP DELETE requests. The behavior of this method
         can be changed by providing your own factories for
         parsers, processors and builders.
+
+        :param kwargs: dictionary of keyword arguments which contains
+                       route parameters and query parameters for the
+                       current HTTP request
         """
         parser = self._cfg.parser_factory.create(self._cfg, **kwargs)
         self._cfg.processor_factory.create(self._cfg, parser)
@@ -70,6 +78,10 @@ class APIView(MethodView):
         """Handles HTTP PUT requests. The behavior of this method
         can be changed by providing your own factories for
         parsers, processors and builders.
+
+        :param kwargs: dictionary of keyword arguments which contains
+                       route parameters and query parameters for the
+                       current HTTP request
         """
         parser = self._cfg.parser_factory.create(self._cfg, **kwargs)
         processor = self._cfg.processor_factory.create(self._cfg, parser)
@@ -121,6 +133,24 @@ class APIManager(object):
 
         Use this method if you need to instantiate the APIManager before
         creating the Flask and SQLAlchemy application objects.
+
+        :param app: :class:`flask.Flask` application instance
+
+        :param db: :class:`flask.ext.sqlalchemy.SQLAlchemy` instance
+
+        :param cfg_class: global default configuration class, default is
+                          :class:`flask_resteasy.configs.APIConfig`
+
+        :param decorators: list of decorators to
+                           apply to all registered HTTP methods
+
+        :param bp: global default Flask Blueprint to register all routes with
+
+        :param excludes: see `exclude` info in class
+                         :class:`flask_resteasy.configs.APIConfig`
+
+        :param methods: global default list of HTTP methods to register
+                        for each endpoint, the default setting is ['GET']
         """
         self._app = app
         self._db = db
@@ -145,19 +175,24 @@ class APIManager(object):
     def get_cfg(self, resource_name):
         """Returns the :class:`flask_resteasy.configs.APIConfig` for
         a resource.
+
+        :param resource_name: name of resource
         """
         return self._cfg_for_resources[resource_name]
 
     def get_model(self, resource_name):
         """Returns the model :class:`flask.ext.sqlalchemy.Model`
         for a resource.
+
+        :param resource_name: name of resource
         """
         return self._model_for_resources[resource_name]
 
     def get_excludes_for(self, key):
         """Returns an exclude list for a specific key.
-        For list of keys see `exclude` info in class
-        :class:`flask_resteasy.configs.APIConfig`
+
+        :param key: exclude keyword, for list of keys see `exclude` info in
+                   class :class:`flask_resteasy.configs.APIConfig`
         """
         if self._excludes is not None and key in self._excludes:
             return set(self._excludes[key]) | self.get_excludes_for_all()
@@ -177,6 +212,9 @@ class APIManager(object):
     def register_api(self, model_class, cfg_class=None, methods=None,
                      bp=None, excludes=None):
         """Registers an API endpoint for a SQLAlchemy model.
+
+        :param model_class: class:`flask.ext.sqlalchemy.Model` to registered
+                            for the endpoint
 
         :param cfg_class: configuration class, if None provided will
                           default to :class:`flask_resteasy.configs.APIConfig`
