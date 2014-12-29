@@ -2,14 +2,14 @@ API
 ===
 
 Manager
-------
+-------
 .. module:: flask_resteasy.views
 
 .. autoclass:: APIManager
     :members:
 
 Configuration
---------------
+-------------
 .. module:: flask_resteasy.configs
 
 .. autoclass:: APIConfig
@@ -19,21 +19,22 @@ Configuration
     :members:
 
 View
------
+----
 .. module:: flask_resteasy.views
 
 .. autoclass:: APIView
     :members:
 
+
 Request Parser
----------------
+--------------
 .. module:: flask_resteasy.parsers
 
 .. autoclass:: RequestParser
     :members:
 
 Request Processor
-----------------
+-----------------
 .. module:: flask_resteasy.processors
 
 .. autoclass:: RequestProcessor
@@ -52,7 +53,7 @@ Request Processor
     :members:
 
 Response Builder
----------------
+----------------
 .. module:: flask_resteasy.builders
 
 .. autoclass:: ResponseBuilder
