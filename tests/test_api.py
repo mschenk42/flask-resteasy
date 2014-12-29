@@ -14,7 +14,7 @@ from flask import Flask
 from flask.ext.sqlalchemy import SQLAlchemy
 
 from flask_resteasy.views import APIManager
-from flask_resteasy.configs import JSONAPIConfig, EmberConfig
+from flask_resteasy.configs import APIConfig, EmberConfig
 
 
 app = None
@@ -167,7 +167,7 @@ class TestJSONAPI(TestAPI):
     @classmethod
     def setUpClass(cls):
         super(TestJSONAPI, cls).setUpClass()
-        api_manager = APIManager(app, db, cfg_class=JSONAPIConfig,
+        api_manager = APIManager(app, db, cfg_class=APIConfig,
                                  methods=['GET', 'PUT', 'POST', 'DELETE'])
         api_manager.register_api(TestAPI.Product)
         api_manager.register_api(TestAPI.Distributor)
@@ -445,7 +445,7 @@ class TestRegisterAPIExcludes(TestAPI):
     @classmethod
     def setUpClass(cls):
         super(TestRegisterAPIExcludes, cls).setUpClass()
-        api_manager = APIManager(app, db, cfg_class=JSONAPIConfig,
+        api_manager = APIManager(app, db, cfg_class=APIConfig,
                                  excludes={'from_model': ['created']})
         api_manager.register_api(TestAPI.Product,
                                  excludes={'from_model': ['reorder_qty']})
@@ -480,7 +480,7 @@ class TestMethodRegistration(TestAPI):
                 "lead_time": 5
             }
         }
-        api_manager = APIManager(app, db, cfg_class=JSONAPIConfig)
+        api_manager = APIManager(app, db, cfg_class=APIConfig)
         api_manager.register_api(TestAPI.Product)
         api_manager.register_api(TestAPI.Distributor)
         api_manager.register_api(TestAPI.StockCount)

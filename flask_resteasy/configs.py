@@ -3,8 +3,6 @@
     flask_resteasy.configs
     ~~~~~~~~~~~~~~~~~~~~~~
 
-    :copyright: (c) 2014 by Michael Schenk.
-    :license: BSD, see LICENSE for more details.
 """
 import datetime
 
@@ -13,7 +11,52 @@ from inflection import underscore, camelize, singularize, pluralize
 from .factories import ParserFactory, ProcessorFactory, BuilderFactory
 
 
-class JSONAPIConfig(object):
+class APIConfig(object):
+    """The default configuration class used when registering API endpoints.
+
+    The configuration is based on conventions and sane defaults that
+    allows for quickly creating REST APIs.
+
+    The settings comply with the `must have` requirements for the
+    evolving `JSON API <http://www.jsonapi.org>`_ standard.
+
+    Variations of this configuration can be created by extending this
+    class or by setting arguments when registering APIs and/or creating
+    the APIManager.
+
+    Configuration classes are instantiated when models are registered.  Each
+    endpoint registered will have an associated configuration instance.
+
+    :param model_class: :class:`flask.ext.sqlalchemy.Model`
+                            registered for the endpoint
+
+    :param app: :class:`flask.Flask` application instance
+
+    :param db: :class:`flask.ext.sqlalchemy.SQLAlchemy` instance
+
+    :param api_manager: :class:`flask_resteasy.views.APIManager` instance
+
+    :param excludes:
+
+        To override default behaviour, excluded fields and relationships can be
+        specified as a dictionary of key value pairs.
+
+         * `to_model` - exclude from :attr:`allowed_to_model`
+         * `from_model` - exclude from :attr:`allowed_from_model`
+         * `relationships` - excludes from :attr:`allowed_relationships`
+         * `sort` - excludes from :attr:`allowed_sort`
+         * `filter` - exclude from :attr:`allowed_filter`
+         * `include` - exclude from :attr:`allowed_include`
+         * `all` - exclude from everything
+
+         For example::
+
+         {'to_model': ['created', 'updated'], 'from_model': ['password']}
+
+         Exclusions can be set when registering endpoints by calling
+         :meth:`views.APIManager.register_api` or for all endpoints when
+         creating the :class:`views.APIManager`.
+    """
     def __init__(self, model_class, app, db, api_manager, excludes):
         self._model = model_class
         self._app = app
@@ -43,134 +86,220 @@ class JSONAPIConfig(object):
 
     @property
     def model_class(self):
+        """:class:`flask.ext.sqlalchemy.Model` registered for the endpoint
+        """
         return self._model
 
     @property
     def app(self):
+        """:class:`flask.Flask` application instance
+        """
         return self._app
 
     @property
     def db(self):
+        """:class:`flask.ext.sqlalchemy.SQLAlchemy` instance
+        """
         return self._db
 
     @property
     def api_manager(self):
+        """:class:`flask_resteasy.views.APIManager` instance
+        """
         return self._api_manager
 
     @property
     def all_fields(self):
+        """All fields defined for the :attr:`model_class`.
+        """
         return self._get_all_fields()
 
     @property
     def relationship_fields(self):
+        """Fields with the postfix of :attr:`relationship_field_id_postfix`
+        These should be all the foreign key fields.
+        """
         return self._get_relationship_fields()
 
     @property
     def private_fields(self):
+        """Fields with the prefix :attr:`private_field_prefix`.
+        """
         return self._get_private_fields()
 
     @property
     def field_types(self):
+        """All field types for the :attr:`model_class`
+        """
         return self._get_field_types()
 
     @property
     def relationships(self):
+        """Relationships defined for the :attr:`model_class`. These are
+        links to other model instances, either directly or via a list object.
+        Note this also includes an backrefs created from other models.
+        """
         return self._get_relationships()
 
     @property
     def allowed_from_model(self):
+        """Fields that are marshaled from the :attr:`model_class`
+        to JSON responses. The default is all fields minus
+        private fields, relationship fields and any exclusions.
+        """
         return self._get_allowed_from_model()
 
     @property
     def allowed_to_model(self):
+        """Fields that are marshaled from the JSON request to the
+        :attr:`model_class`. The default is all fields
+        minus private fields, relationship fields, id field and any exclusions.
+        """
         return self._get_allowed_to_model()
 
     @property
     def allowed_relationships(self):
+        """Relationships that are  marshaled to and from the models
+        and JSON requests and responses. The default is all relationships.
+        """
         return self._get_allowed_relationships()
 
     @property
     def allowed_sort(self):
+        """Fields that can be sorted. The default is all allowed relationships.
+        """
         return self._get_allowed_sort()
 
     @property
     def allowed_filter(self):
+        """Fields that can be filtered. The default
+        is :attr:`allowed_from_model`.
+        """
         return self._get_allowed_filter()
 
     @property
     def allowed_include(self):
+        """Relationships that can be side-load in JSON responses.
+        The default is :attr:`allowed_from_model`.
+        """
         return self._get_allowed_include()
 
     @property
     def json_case(self):
+        """Function used to convert the case from model fields to json nodes.
+        The default is lowercase underscore.
+        """
         return self._get_json_case()
 
     @property
     def model_case(self):
+        """Function used to convert the case from json nodes to model fields.
+        The default is lowercase underscore.
+        """
         return self._get_model_case()
 
     @property
     def model_to_json_type_converters(self):
+        """Functions used to convert model fields to json types.
+        """
         return self._get_model_to_json_type_converters()
 
     @property
     def private_field_prefix(self):
+        """Prefix for fields handled as private fields. The
+        default is `_`, for example `_field`.
+        """
         return self._get_private_field_prefix()
 
     @property
     def relationship_field_id_postfix(self):
+        """Prefix for fields handled as relationship id fields. The
+        default is `_id`, for example `field_id`
+        """
         return self._get_relationship_field_id_postfix()
 
     @property
     def id_field(self):
+        """Primary key field name for model class. The default is `id`.
+        """
         return self._get_id_field()
 
     @property
     def resource_name(self):
+        """The resource name for the registered model.  The default is
+        the model_class.__table__.name in lowercase.
+        """
         return self._get_resource_name()
 
     @property
     def resource_name_case(self):
+        """Function used to convert the resource name case.  The default
+        is lowercase with underscores.
+        """
         return self._get_resource_name_case()
 
     @property
     def resource_name_plural(self):
+        """Plural name for resource.
+        """
         return self._get_resource_name_plural()
 
     @property
     def endpoint_name(self):
+        """Name used when registering the endpoint.
+        """
         return self._get_endpoint_name()
 
     @property
     def use_link_nodes(self):
+        """Switch for using `links` and `linked` nodes in json responses
+        and url routes for accessing resources.  To be JSON API compliant this
+        switch is set to True by default.
+        """
         return self._get_use_link_nodes()
 
     @property
     def id_route_param(self):
+        """Keyword argument registered for the primary key id in routes. The
+        default is `ident`.
+        """
         return self._get_id_route_param()
 
     @property
     def link_route_param(self):
+        """Keyword argument registered for a link's primary key id in routes.
+        The default is `link`.
+        """
         return self._get_link_route_param()
 
     @property
     def links_node(self):
+        """Literal string name for a link node.
+        """
         return self._get_links_node()
 
     @property
     def linked_node(self):
+        """Literal string name for a links node.
+        """
         return self._get_linked_node()
 
     @property
     def parser_factory(self):
+        """Factory used to create parsers.
+        """
         return self._get_parser_factory()
 
     @property
     def processor_factory(self):
+        """Factory used to create processors.
+        """
         return self._get_processor_factory()
 
     @property
     def builder_factory(self):
+        """Factory used to create builders.
+        """
         return self._get_builder_factory()
 
     @staticmethod
@@ -242,7 +371,7 @@ class JSONAPIConfig(object):
             self._allowed_relationships = set(
                 map(self._get_model_case(),
                     (self._get_relationships() -
-                    self._get_excludes_for('relationship'))))
+                     self._get_excludes_for('relationship'))))
         return self._allowed_relationships
 
     def _get_allowed_sort(self):
@@ -266,7 +395,7 @@ class JSONAPIConfig(object):
             self._allowed_include = set(
                 map(self._get_model_case(),
                     (self._get_allowed_relationships() -
-                    self._get_excludes_for('include'))))
+                     self._get_excludes_for('include'))))
         return self._allowed_include
 
     def _get_excludes_for(self, key):
@@ -349,7 +478,15 @@ class JSONAPIConfig(object):
         return BuilderFactory
 
 
-class EmberConfig(JSONAPIConfig):
+class EmberConfig(APIConfig):
+    """Provides the settings to be compatible with the Ember.js
+    `REST Adapter <http://emberjs.com/api/data/classes/DS.RESTAdapter.html>`_.
+
+    Currently Ember's REST adapter is not fully JSON compliant.  It does
+    not support `links` and `linked` nodes.
+
+    Ember.js also prefers Camel case for JSON nodes and resource names.
+    """
     def _get_use_link_nodes(self):
         return False
 

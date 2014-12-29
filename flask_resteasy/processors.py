@@ -3,8 +3,6 @@
     flask_resteasy.processors
     ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    :copyright: (c) 2014 by Michael Schenk.
-    :license: BSD, see LICENSE for more details.
 """
 from abc import abstractmethod
 from flask import request
@@ -12,6 +10,14 @@ from inflection import pluralize
 
 
 class RequestProcessor(object):
+    """Base class for request processors.
+
+    :param cfg: :class:`flask_resteasy.configs.APIConfig` instance
+
+    :param request_parser: :class:`flask_resteasy.parsers.RequestParser`
+                           instance
+
+    """
     def __init__(self, cfg, request_parser):
         self._cfg = cfg
         self._rp = request_parser
@@ -26,18 +32,30 @@ class RequestProcessor(object):
 
     @property
     def resources(self):
+        """List of resource models objects set as a
+        result of processing the request.
+        """
         return self._resources
 
     @property
     def render_as_list(self):
+        """Should the results for the request by rendered
+        as a list or as a dictionary?
+        """
         return self._render_as_list
 
     @property
     def links(self):
+        """List of link model objects set as a
+        result of processing the request.
+        """
         return self._links
 
     @property
     def resource_name(self):
+        """Resource name for the request processed.  It will either by the
+        main resource name or the link name.
+        """
         if self._rp.link is None:
             return (self._cfg.resource_name_plural
                     if self._render_as_list else self._cfg.resource_name)
@@ -136,6 +154,8 @@ class RequestProcessor(object):
 
 
 class GetRequestProcessor(RequestProcessor):
+    """Processor for HTTP GET requests.
+    """
     def __init__(self, cfg, request_parser):
         super(GetRequestProcessor, self).__init__(cfg, request_parser)
 
@@ -181,6 +201,8 @@ class GetRequestProcessor(RequestProcessor):
 
 
 class DeleteRequestProcessor(RequestProcessor):
+    """Processor for HTTP DELETE requests.
+    """
     def __init__(self, cfg, request_parser):
         super(DeleteRequestProcessor, self).__init__(cfg, request_parser)
 
@@ -192,6 +214,8 @@ class DeleteRequestProcessor(RequestProcessor):
 
 
 class PostRequestProcessor(RequestProcessor):
+    """Processor for HTTP POST requests.
+    """
     def __init__(self, cfg, request_parser):
         super(PostRequestProcessor, self).__init__(cfg, request_parser)
 
@@ -206,6 +230,8 @@ class PostRequestProcessor(RequestProcessor):
 
 
 class PutRequestProcessor(RequestProcessor):
+    """Processor for HTTP PUT requests.
+    """
     def __init__(self, cfg, request_parser):
         super(PutRequestProcessor, self).__init__(cfg, request_parser)
 

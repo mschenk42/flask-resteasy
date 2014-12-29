@@ -3,55 +3,115 @@
     flask_resteasy.parsers
     ~~~~~~~~~~~~~~~~~~~~~~
 
-    :copyright: (c) 2014 by Michael Schenk.
-    :license: BSD, see LICENSE for more details.
 """
 from flask import request
 
 
 class RequestParser(object):
+    """Parses Route and Query parameters for an HTTP request.
+
+    :param cfg: :class:`flask_resteasy.configs.APIConfig` instance
+
+    :param kwargs: dictionary of keyword arguments which contains
+                   route parameters and query parameters
+    """
     def __init__(self, cfg, **kwargs):
         self._cfg = cfg
         self._parse(**kwargs)
 
     @property
     def idents(self):
+        """List of identifiers set in the `ident` route parameter.
+
+           For example::
+
+               products/1
+               idents = [1]
+
+               products/1,2
+               idents = [1,2]
+        """
         return self._idents
 
     @property
     def link(self):
+        """Link name set in `link` route parameter.
+
+        For example::
+
+            products/1/links/distributor
+            link = 'distributor'
+
+            products/1/distributor
+            link = 'distributor'
+        """
         return self._link
 
     @property
     def filter(self):
+        """Dictionary of field name and value filter pairs.
+        Filters are set via query parameters.
+
+        For example::
+
+            products?filter=name:lettuce,distributor_code:SYSCO
+            filter = {'name': 'lettuce', 'distributor_code': 'SYSCO'}
+        """
         return self._filter
 
     @property
     def sort(self):
+        """Dictionary of field name and value sort pairs.
+        Sort pairs are set via query parameters. The value parameter is
+        the direction of the sort. Specify `-` for descending otherwise
+        it's defaulted to ascending.
+
+        For example::
+
+            products?sort=-name,distributor_code
+            sort = {'name': 'desc', 'distributor_code', 'asc'}
+        """
         return self._sort
 
     @property
     def include(self):
+        """List of relationships for a resource to side load.
+
+        For example::
+
+            products?include=brand,category
+            include=['brand', 'category']
+        """
         return self._include
 
     @property
     def qp_key_pairs_del(self):
+        """Delimiter for separating multiple key value pairs.
+        """
         return ','
 
     @property
     def qp_key_val_del(self):
+        """Delimiter for separating keys from values.
+        """
         return ':'
 
     @property
     def filter_qp(self):
+        """Filter query parameter keyword.
+        """
         return 'filter'
 
     @property
     def sort_qp(self):
+        """Sort query parameter keyword.
+        """
         return 'sort'
 
     @property
     def include_qp(self):
+        """Include query parameter keyword.
+        """
         return 'include'
 
     def _parse(self, **kwargs):

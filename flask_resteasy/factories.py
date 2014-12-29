@@ -3,8 +3,6 @@
     flask_resteasy.factories
     ~~~~~~~~~~~~~~~~~~~~~~~~
 
-    :copyright: (c) 2014 by Michael Schenk.
-    :license: BSD, see LICENSE for more details.
 """
 from flask import request
 
@@ -15,12 +13,16 @@ from .builders import ResponseBuilder
 
 
 class ParserFactory(object):
+    """Factory for creating request parser objects.
+    """
     @staticmethod
     def create(cfg, **kwargs):
         return RequestParser(cfg, **kwargs)
 
 
 class ProcessorFactory(object):
+    """Factory for creating request processor objects.
+    """
     @staticmethod
     def create(cfg, request_parser):
         if request.method == 'GET':
@@ -34,6 +36,8 @@ class ProcessorFactory(object):
 
 
 class BuilderFactory(object):
+    """Factory for creating response builder objects.
+    """
     @staticmethod
     def create(cfg, response_builder):
         return ResponseBuilder(cfg, response_builder)

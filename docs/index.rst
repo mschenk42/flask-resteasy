@@ -1,22 +1,38 @@
-.. flask-resteasy documentation master file, created by
-   sphinx-quickstart on Tue Dec 16 15:20:09 2014.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+Flask-RestEasy
+==============
+**Flask-RestEasy** is a `Flask <http://flask.pocoo.org>`_ extension for
+quickly creating `JSON API <http://www.jsonapi.org>`_ compliant
+REST APIs for models created with `SQLAlchemy <http://www.sqlalchemy.org>`_
+and integrated using the `Flask-SQLAlchemy extension
+<http://www.pythonhosted.org/Flask-SQLAlchemy/>`_.
 
-Welcome to flask-resteasy's documentation!
-==========================================
+It also fully supports Ember.js via its
+`REST Adapter <http://emberjs.com/api/data/classes/DS.RESTAdapter.html>`_.
 
-Contents:
+The JSON API standard is currently under development. The implementation
+of Flask-RestEasy will be updated to align with it as it evolves.
+
+:copyright: 2014 by Michael Schenk.
+:license: BSD, see LICENSE for more details.
+
+
+User's Guide
+------------
 
 .. toctree::
    :maxdepth: 2
 
+   installation
+   quickstart
+   basicusage
+   conventions
+   customizing
 
 
-Indices and tables
-==================
+API Reference
+-------------
 
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+.. toctree::
+   :maxdepth: 2
 
+   api

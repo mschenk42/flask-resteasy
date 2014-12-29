@@ -3,13 +3,14 @@
     flask_resteasy.builders
     ~~~~~~~~~~~~~~~~~~~~~~~
 
-    :copyright: (c) 2014 by Michael Schenk.
-    :license: BSD, see LICENSE for more details.
 """
 from flask import request
 
 
 class ResponseBuilder(object):
+    """Builds the JSON dictionary that is returned as a JSON response
+    to client.
+    """
     def __init__(self, cfg, request_processor):
         self._cfg = cfg
         self._rp = request_processor
@@ -18,10 +19,14 @@ class ResponseBuilder(object):
 
     @property
     def json_dic(self):
+        """JSON dictionary built for the processed resources and links.
+        """
         return self._json_dic
 
     @property
     def urls(self):
+        """Request URL for resource.
+        """
         return self._get_urls_for(self._rp.resources)
 
     def _build(self):
