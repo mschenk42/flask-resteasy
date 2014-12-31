@@ -6,6 +6,8 @@
 """
 import datetime
 
+from flask import current_app
+
 from inflection import underscore, camelize, singularize, pluralize
 
 from .factories import ParserFactory, ProcessorFactory, BuilderFactory
@@ -30,12 +32,6 @@ class APIConfig(object):
     :param model_class: :class:`flask.ext.sqlalchemy.Model`
                             registered for the endpoint
 
-    :param app: :class:`flask.Flask` application instance
-
-    :param db: :class:`flask.ext.sqlalchemy.SQLAlchemy` instance
-
-    :param api_manager: :class:`flask_resteasy.views.APIManager` instance
-
     :param excludes:
 
         To override default behaviour, excluded fields and relationships can be
@@ -57,11 +53,8 @@ class APIConfig(object):
          :meth:`flask_resteasy.views.APIManager.register_api` or for all
          endpoints when creating the :class:`flask_resteasy.views.APIManager`.
     """
-    def __init__(self, model_class, app, db, api_manager, excludes):
+    def __init__(self, model_class, excludes):
         self._model = model_class
-        self._app = app
-        self._db = db
-        self._api_manager = api_manager
         self._excludes = excludes
 
         # These attributes are set on access because some
@@ -94,19 +87,19 @@ class APIConfig(object):
     def app(self):
         """:class:`flask.Flask` application instance
         """
-        return self._app
+        return current_app
 
     @property
     def db(self):
         """:class:`flask.ext.sqlalchemy.SQLAlchemy` instance
         """
-        return self._db
+        return current_app.api_manager.db
 
     @property
     def api_manager(self):
         """:class:`flask_resteasy.views.APIManager` instance
         """
-        return self._api_manager
+        return current_app.api_manager
 
     @property
     def all_fields(self):
@@ -335,12 +328,12 @@ class APIConfig(object):
 
     @staticmethod
     def _get_resource_name_case():
-        return lambda s: underscore(s)
+        return lambda s: underscore(s).lower()
 
     def _get_resource_name(self):
         if self._resource_name is None:
             self._resource_name = self.resource_name_case(
-                singularize(str(self.model_class.__table__.name.lower())))
+                singularize(str(self.model_class.__table__.name)))
         return self._resource_name
 
     def _get_resource_name_plural(self):

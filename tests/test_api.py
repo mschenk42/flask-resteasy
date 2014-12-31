@@ -13,7 +13,7 @@ import json
 from flask import Flask
 from flask.ext.sqlalchemy import SQLAlchemy
 
-from flask_resteasy.views import APIManager
+from flask.ext.resteasy.manager import APIManager
 from flask_resteasy.configs import APIConfig, EmberConfig
 
 

@@ -30,10 +30,10 @@ class ResponseBuilder(object):
         return self._get_urls_for(self._rp.resources)
 
     def _build(self):
-        json_dic = {self._rp.resource_name: []
-                    if self._rp.render_as_list else {}}
+        json_dic = {}
 
         if self._rp.render_as_list:
+            json_dic[self._rp.resource_name] = []
             for resource in self._rp.resources:
                 json_dic[self._rp.resource_name].append(
                     self._resource_to_jdic(resource))

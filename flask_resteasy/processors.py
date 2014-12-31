@@ -5,7 +5,9 @@
 
 """
 from abc import abstractmethod
+
 from flask import request
+
 from inflection import pluralize
 
 
