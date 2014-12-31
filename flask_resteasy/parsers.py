@@ -5,6 +5,7 @@
 
 """
 from flask import request
+from flask import abort
 
 
 class RequestParser(object):
@@ -121,11 +122,23 @@ class RequestParser(object):
         if self._cfg.id_route_param in kwargs and kwargs[
                 self._cfg.id_route_param] is not None:
             self._idents = kwargs[self._cfg.id_route_param].split(',')
+            for i in self._idents:
+                try:
+                    int(i)
+                except ValueError:
+                    self._cfg.logger.warn('%s route param are not ints [%s]'
+                                          % (self._cfg.id_route_param,
+                                             self._idents))
+                    abort(404)
 
         self._link = None
         if self._cfg.link_route_param in kwargs and kwargs[
                 self._cfg.link_route_param] is not None:
             self._link = kwargs[self._cfg.link_route_param]
+            if len(self._idents) == 0 \
+                    or self._link not in self._cfg.allowed_relationships:
+                self._cfg.logger.warn('Invalid link route [%s]' % self._link)
+                abort(404)
 
         # parse query params
         self._filter = None
@@ -143,13 +156,6 @@ class RequestParser(object):
                 self.include_qp] is not None:
             self._include = self._parse_include(request.args[self.include_qp])
 
-        assert self.link is None or self._cfg.model_case(
-            self.link) in self._cfg.allowed_relationships, \
-            'invalid links resource url'
-
-        assert self.link is None or len(
-            self.idents) > 0, 'invalid links resource url'
-
     def _parse_filter(self, filter_str):
         rv = {}
         if len(filter_str) == 0:
@@ -161,6 +167,9 @@ class RequestParser(object):
                 filter_key = self._cfg.model_case(filter_pair[0])
                 if filter_key in self._cfg.allowed_filter:
                     rv[filter_key] = filter_pair[1]
+                else:
+                    self._cfg.logger.warn('Invalid filter [%s]' % filter_key)
+                    abort(404)
         return rv
 
     def _parse_sort(self, sort_str):
@@ -179,6 +188,9 @@ class RequestParser(object):
                 fld = self._cfg.model_case(fld)
                 if fld in self._cfg.allowed_sort:
                     rv[fld] = order
+                else:
+                    self._cfg.logger.warn('Invalid sort [%s]' % fld)
+                    abort(404)
         return rv
 
     def _parse_include(self, include_str):
@@ -191,4 +203,7 @@ class RequestParser(object):
                 i = self._cfg.model_case(i)
                 if i in self._cfg.allowed_include:
                     rv.add(i)
+                else:
+                    self._cfg.logger.warn('Invalid include [%s]' % i)
+                    abort(404)
         return rv

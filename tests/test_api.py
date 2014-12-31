@@ -183,6 +183,12 @@ class TestJSONAPI(TestAPI):
             self.assertTrue('distributor' in j)
             self.assertTrue(isinstance(j['distributor'], dict))
 
+    def test_get_invalid_relationship(self):
+        with self.client as c:
+            rv = c.get(self.get_url('/products/1/links/invalid'),
+                       headers=self.get_headers())
+            self.assertTrue(rv.status_code == 404)
+
     def test_get_all(self):
         with self.client as c:
             rv = c.get(self.get_url('/products'), headers=self.get_headers())
@@ -359,6 +365,12 @@ class TestEmberAPI(TestJSONAPI):
             self.assertTrue('distributor' in j)
             self.assertTrue(isinstance(j['distributor'], dict))
 
+    def test_get_invalid_relationship(self):
+        with self.client as c:
+            rv = c.get(self.get_url('/products/1/invalid'),
+                       headers=self.get_headers())
+            self.assertTrue(rv.status_code == 404)
+
     def test_include_list_obj(self):
         with self.client as c:
             rv = c.get(self.get_url('/products'),
@@ -498,3 +510,60 @@ class TestMethodRegistration(TestAPI):
             rv = c.delete(self.get_url('/products/1'),
                           headers=self.get_headers())
             self.assertTrue(rv.status_code == 405)
+
+
+class TestInvalidRequests(TestAPI):
+    @classmethod
+    def setUpClass(cls):
+        super(TestInvalidRequests, cls).setUpClass()
+        api_manager = APIManager(app, db, cfg_class=APIConfig,
+                                 excludes={'relationship': ['distributor']})
+
+        api_manager.register_api(TestAPI.Product)
+        api_manager.register_api(TestAPI.Distributor)
+
+    def test_excluded_link(self):
+        with self.client as c:
+            rv = c.get(self.get_url('/products/1/links/distributor'),
+                       headers=self.get_headers())
+            self.assertTrue(rv.status_code == 404)
+
+    def test_invalid_link(self):
+        with self.client as c:
+            rv = c.get(self.get_url('/products/1/links/invalid'),
+                       headers=self.get_headers())
+            self.assertTrue(rv.status_code == 404)
+
+    def test_invalid_idents(self):
+        with self.client as c:
+            rv = c.get(self.get_url('/products/1,a'),
+                       headers=self.get_headers())
+            self.assertTrue(rv.status_code == 404)
+
+    def test_invalid_filter(self):
+        with self.client as c:
+            rv = c.get(self.get_url('/products'),
+                       headers=self.get_headers(),
+                       query_string={'filter': 'names:Green Lettuce'})
+            self.assertTrue(rv.status_code == 404)
+
+    def test_invalid_sort(self):
+        with self.client as c:
+            rv = c.get(self.get_url('/products'),
+                       headers=self.get_headers(),
+                       query_string={'sort': '-names'})
+            self.assertTrue(rv.status_code == 404)
+
+    def test_invalid_include(self):
+        with self.client as c:
+            rv = c.get(self.get_url('/products'),
+                       headers=self.get_headers(),
+                       query_string={'include': 'invalid'})
+            self.assertTrue(rv.status_code == 404)
+
+    def test_excluded_include(self):
+        with self.client as c:
+            rv = c.get(self.get_url('/products'),
+                       headers=self.get_headers(),
+                       query_string={'include': 'distributor'})
+            self.assertTrue(rv.status_code == 404)

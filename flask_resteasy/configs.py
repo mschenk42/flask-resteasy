@@ -39,7 +39,7 @@ class APIConfig(object):
 
          * `to_model` - exclude from :attr:`allowed_to_model`
          * `from_model` - exclude from :attr:`allowed_from_model`
-         * `relationships` - excludes from :attr:`allowed_relationships`
+         * `relationship` - excludes from :attr:`allowed_relationships`
          * `sort` - excludes from :attr:`allowed_sort`
          * `filter` - exclude from :attr:`allowed_filter`
          * `include` - exclude from :attr:`allowed_include`
@@ -100,6 +100,12 @@ class APIConfig(object):
         """:class:`flask_resteasy.views.APIManager` instance
         """
         return current_app.api_manager
+
+    @property
+    def logger(self):
+        """Logger instance for current application
+        """
+        return current_app.logger
 
     @property
     def all_fields(self):
