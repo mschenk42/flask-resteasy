@@ -136,7 +136,8 @@ class RequestParser(object):
                 self._cfg.link_route_param] is not None:
             self._link = kwargs[self._cfg.link_route_param]
             if len(self._idents) == 0 \
-                    or self._link not in self._cfg.allowed_relationships:
+                    or self._cfg.model_case(self._link) \
+                    not in self._cfg.allowed_relationships:
                 self._cfg.logger.warn('Invalid link route [%s]' % self._link)
                 abort(404)
 
