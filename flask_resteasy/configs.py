@@ -61,7 +61,7 @@ class APIConfig(object):
         # SQLAlchemy models may not be initialized yet.
         # For example SQLAlchemy back refs will not be set until the model
         # creating the back ref is initialized.
-        self._all_fields = None
+        self._fields = None
         self._field_types = None
         self._relationship_fields = None
         self._resource_name = None
@@ -108,10 +108,10 @@ class APIConfig(object):
         return current_app.logger
 
     @property
-    def all_fields(self):
+    def fields(self):
         """All fields defined for the :attr:`model_class`.
         """
-        return self._get_all_fields()
+        return self._get_fields()
 
     @property
     def relationship_fields(self):
@@ -313,11 +313,11 @@ class APIConfig(object):
     def _get_model_to_json_type_converters():
         return {"DATETIME": datetime.datetime.isoformat}
 
-    def _get_all_fields(self):
-        if self._all_fields is None:
-            self._all_fields = set(
+    def _get_fields(self):
+        if self._fields is None:
+            self._fields = set(
                 [c.name for c in self.model_class.__table__.columns])
-        return self._all_fields
+        return self._fields
 
     def _get_field_types(self):
         if self._field_types is None:
@@ -328,13 +328,13 @@ class APIConfig(object):
     def _get_relationship_fields(self):
         if self._relationship_fields is None:
             self._relationship_fields = set(
-                [n for n in self.all_fields
+                [n for n in self.fields
                  if n.endswith(self.relationship_field_id_postfix)])
         return self._relationship_fields
 
     @staticmethod
     def _get_resource_name_case():
-        return lambda s: underscore(s).lower()
+        return lambda s: s.lower()
 
     def _get_resource_name(self):
         if self._resource_name is None:
@@ -351,7 +351,7 @@ class APIConfig(object):
         if self._allowed_to_model is None:
             self._allowed_to_model = set(
                 map(self._get_model_case(),
-                    (self.all_fields - self.private_fields -
+                    (self.fields - self.private_fields -
                      self.relationship_fields - {self.id_field} -
                      self._get_excludes_for('to_model'))))
         return self._allowed_to_model
@@ -360,7 +360,7 @@ class APIConfig(object):
         if self._allowed_from_model is None:
             self._allowed_from_model = set(
                 map(self._get_model_case(),
-                    (self.all_fields - self.private_fields -
+                    (self.fields - self.private_fields -
                      self.relationship_fields -
                      self._get_excludes_for('from_model'))))
         return self._allowed_from_model
@@ -417,7 +417,7 @@ class APIConfig(object):
     def _get_private_fields(self):
         if self._private_fields is None:
             self._private_fields = set(
-                [n for n in self.all_fields
+                [n for n in self.fields
                  if n.startswith(self.private_field_prefix)])
         return self._private_fields
 
@@ -432,7 +432,7 @@ class APIConfig(object):
             # to lookup relationships, since it's protected
             self._relationships = set(
                 [n for n in self.model_class._sa_class_manager
-                 if n not in self.all_fields])
+                 if n not in self.fields])
         return self._relationships
 
     def _get_use_link_nodes(self):

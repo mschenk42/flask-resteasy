@@ -117,7 +117,7 @@ class RequestParser(object):
 
     def _parse(self, **kwargs):
 
-        # parse route params
+        # parse id route param
         self._idents = []
         if self._cfg.id_route_param in kwargs and kwargs[
                 self._cfg.id_route_param] is not None:
@@ -126,32 +126,44 @@ class RequestParser(object):
                 try:
                     int(i)
                 except ValueError:
-                    self._cfg.logger.warn('%s route param are not ints [%s]'
-                                          % (self._cfg.id_route_param,
-                                             self._idents))
+                    self._cfg.logger.debug(
+                        '[%s] route param are not Integers [%s]'
+                        % (self._cfg.id_route_param, self._idents))
                     abort(404)
 
+        # parse link route param
         self._link = None
         if self._cfg.link_route_param in kwargs and kwargs[
                 self._cfg.link_route_param] is not None:
-            self._link = kwargs[self._cfg.link_route_param]
-            if len(self._idents) == 0 \
-                    or self._cfg.model_case(self._link) \
-                    not in self._cfg.allowed_relationships:
-                self._cfg.logger.warn('Invalid link route [%s]' % self._link)
+            self._link = self._cfg.model_case(
+                kwargs[self._cfg.link_route_param])
+            if len(self._idents) == 0:
+                self._cfg.logger.debug('No [%s] specified for link route [%s]'
+                                       % (self._cfg.id_route_param,
+                                          self._link))
                 abort(404)
+            elif self._link not in self._cfg.relationships:
+                self._cfg.logger.debug('Link [%s] is unknown relationship'
+                                       % self._link)
+                abort(404)
+            elif self._link not in self._cfg.allowed_relationships:
+                self._cfg.logger.debug(
+                    'Link route [%s] not allowed' % self._link)
+                abort(403)
 
-        # parse query params
+        # parse filter query param
         self._filter = None
         if self.filter_qp in request.args and request.args[
                 self.filter_qp] is not None:
             self._filter = self._parse_filter(request.args[self.filter_qp])
 
+        # parse sort query param
         self._sort = None
         if self.sort_qp in request.args and request.args[
                 self.sort_qp] is not None:
             self._sort = self._parse_sort(request.args[self.sort_qp])
 
+        # parse include query param
         self._include = None
         if self.include_qp in request.args and request.args[
                 self.include_qp] is not None:
@@ -166,14 +178,20 @@ class RequestParser(object):
             for f in filters:
                 filter_pair = f.split(self.qp_key_val_del)
                 if len(filter_pair) != 2:
-                    self._cfg.logger.warn('Invalid filter [%s]' % f)
+                    self._cfg.logger.debug('Invalid filter pair [%s]' % f)
                     abort(404)
                 filter_key = self._cfg.model_case(filter_pair[0])
                 if filter_key in self._cfg.allowed_filter:
                     rv[filter_key] = filter_pair[1]
                 else:
-                    self._cfg.logger.warn('Invalid filter [%s]' % filter_key)
-                    abort(404)
+                    if filter_key not in self._cfg.fields:
+                        self._cfg.logger.debug('Filter [%s] unknown field'
+                                               % filter_key)
+                        abort(404)
+                    else:
+                        self._cfg.logger.debug('Filter [%s] not allowed'
+                                               % filter_key)
+                        abort(403)
         return rv
 
     def _parse_sort(self, sort_str):
@@ -193,8 +211,12 @@ class RequestParser(object):
                 if fld in self._cfg.allowed_sort:
                     rv[fld] = order
                 else:
-                    self._cfg.logger.warn('Invalid sort [%s]' % fld)
-                    abort(404)
+                    if fld not in self._cfg.fields:
+                        self._cfg.logger.debug('Sort [%s] unknown field' % fld)
+                        abort(404)
+                    else:
+                        self._cfg.logger.debug('Sort [%s] not allowed' % fld)
+                        abort(403)
         return rv
 
     def _parse_include(self, include_str):
@@ -208,6 +230,11 @@ class RequestParser(object):
                 if i in self._cfg.allowed_include:
                     rv.add(i)
                 else:
-                    self._cfg.logger.warn('Invalid include [%s]' % i)
-                    abort(404)
+                    if i not in self._cfg.relationships:
+                        self._cfg.logger.debug(
+                            'Include [%s] unknown relationship' % i)
+                        abort(404)
+                    else:
+                        self._cfg.logger.debug('Include [%s] not allowed' % i)
+                        abort(403)
         return rv

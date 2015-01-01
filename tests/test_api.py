@@ -522,11 +522,11 @@ class TestInvalidRequests(TestAPI):
         api_manager.register_api(TestAPI.Product)
         api_manager.register_api(TestAPI.Distributor)
 
-    def test_excluded_link(self):
+    def test_not_allowed_link(self):
         with self.client as c:
             rv = c.get(self.get_url('/products/1/links/distributor'),
                        headers=self.get_headers())
-            self.assertTrue(rv.status_code == 404)
+            self.assertTrue(rv.status_code == 403)
 
     def test_invalid_link(self):
         with self.client as c:
@@ -566,9 +566,9 @@ class TestInvalidRequests(TestAPI):
                        query_string={'include': 'invalid'})
             self.assertTrue(rv.status_code == 404)
 
-    def test_excluded_include(self):
+    def test_not_allowed_include(self):
         with self.client as c:
             rv = c.get(self.get_url('/products'),
                        headers=self.get_headers(),
                        query_string={'include': 'distributor'})
-            self.assertTrue(rv.status_code == 404)
+            self.assertTrue(rv.status_code == 403)

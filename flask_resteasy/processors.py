@@ -170,7 +170,7 @@ class GetRequestProcessor(RequestProcessor):
         if self._rp.link:
             assert len(resources) > 0, 'No parent resource found for links'
             for resc in resources:
-                links = getattr(resc, self._cfg.model_case(self._rp.link))
+                links = getattr(resc, self._rp.link)
                 self._render_as_list = isinstance(links, list)
                 if self._render_as_list:
                     self._resources.extend(links)
