@@ -546,6 +546,11 @@ class TestInvalidRequests(TestAPI):
                        headers=self.get_headers(),
                        query_string={'filter': 'names:Green Lettuce'})
             self.assertTrue(rv.status_code == 404)
+            # test valid filter attribute without filter condition
+            rv = c.get(self.get_url('/products'),
+                       headers=self.get_headers(),
+                       query_string={'filter': 'name'})
+            self.assertTrue(rv.status_code == 404)
 
     def test_invalid_sort(self):
         with self.client as c:

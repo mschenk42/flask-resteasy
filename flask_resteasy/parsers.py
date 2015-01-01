@@ -165,6 +165,9 @@ class RequestParser(object):
             filters = filter_str.split(self.qp_key_pairs_del)
             for f in filters:
                 filter_pair = f.split(self.qp_key_val_del)
+                if len(filter_pair) != 2:
+                    self._cfg.logger.warn('Invalid filter [%s]' % f)
+                    abort(404)
                 filter_key = self._cfg.model_case(filter_pair[0])
                 if filter_key in self._cfg.allowed_filter:
                     rv[filter_key] = filter_pair[1]
