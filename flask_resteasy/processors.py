@@ -6,7 +6,7 @@
 """
 from abc import abstractmethod
 
-from flask import request
+from flask import request, abort, current_app
 
 from inflection import pluralize
 
@@ -64,38 +64,47 @@ class RequestProcessor(object):
         else:
             return self._rp.link
 
-    def _build_query(self, model_class):
-        query = model_class.query
+    def _build_query(self, idents, target_class, join_class=None):
+        q = target_class.query
+        if join_class:
+            if len(idents) > 0:
+                q = q.join(join_class).filter(join_class.id.in_(idents))
+            else:
+                # ids not provided is an error, parser should catch this
+                current_app.logger.debug('No [%s] specified for link route'
+                                         % self._cfg.id_route_param)
+                abort(400)
+        else:
+            if len(idents) > 0:
+                q = q.filter(target_class.id.in_(idents))
         if self._rp.filter:
-            query = query.filter_by(**self._rp.filter)
+            q = q.filter_by(**self._rp.filter)
         if self._rp.sort:
             for col, order in self._rp.sort.items():
-                fld = getattr(getattr(model_class, col), order)()
-                query = query.order_by(fld)
-        return query
+                # todo research why we have to access the col this way
+                fld = getattr(getattr(target_class, col), order)()
+                q = q.order_by(fld)
+        return q
 
-    def _all(self, model_class=None):
-        if model_class is None:
-            model_class = self._cfg.model_class
-        else:
-            model_class = model_class
-        return self._build_query(model_class).all()
+    def _get_all(self, model_class):
+        # todo will need to limit what is returned from database here
+        return self._build_query([], model_class).all()
 
-    def _get_all(self, idents, model_class=None):
-        models = []
-        if model_class is None:
-            model_class = self._cfg.model_class
+    def _get_all_or_404(self, idents, target_class=None, join_class=None):
+        if target_class is None:
+            target_class = self._cfg.model_class
         else:
-            model_class = model_class
-        for i in idents:
-            models.append(self._get_or_404(i, model_class))
-        return models
+            target_class = target_class
+        q = self._build_query(idents, target_class, join_class)
+        # todo will need to limit what is returned from database here
+        rv = q.all()
+        # if there are no filters and no results returned then not found
+        if self._rp.filter is None and len(rv) == 0:
+            abort(404)
+        return rv
 
-    def _get_or_404(self, ident, model_class=None):
-        if model_class is None:
-            model_class = self._cfg.model_class
-        else:
-            model_class = model_class
+    def _get_or_404(self, ident, model_class):
+        # todo will need to limit what is returned from database here
         return model_class.query.get_or_404(ident)
 
     def _copy(self, model, fields, field_defaults=None, model_class=None):
@@ -121,38 +130,51 @@ class RequestProcessor(object):
     def _json_to_model(self, j_dict, model):
 
         def _json_to_model_fields(j_dict_root):
+            """Update model fields from JSON
+            """
             for fld in self._cfg.allowed_to_model:
                 j_key = self._cfg.json_case(fld)
                 if j_key in j_dict_root:
                     setattr(model, fld, j_dict_root[j_key])
 
-        def _json_to_model_links(j_dict_links):
+        def _json_to_model_rels(j_dict_links):
+            """Update model relationships from JSON
+            """
             for rel in self._cfg.allowed_relationships:
                 j_key = self._cfg.json_case(rel)
                 if j_key in j_dict_links:
-                    model_link = j_dict_links[j_key]
-                    if model_link is None:
+                    link_ids = j_dict_links[j_key]
+                    # link_ids is a list, str(single id) or None
+                    if link_ids is None:
                         continue
-                    elif isinstance(model_link, list):
-                        lst = self._get_all(
-                            model_link,
+                    elif isinstance(link_ids, list):
+                        lst = self._get_all_or_404(
+                            link_ids,
                             self._cfg.api_manager.get_model(
                                 self._cfg.resource_name_case(j_key)))
+                        # todo will it work if it's lazy=dynamic relationship?
+                        # I think you can only use append and not extend for
+                        # this type of relationship
+                        # write a test for this condition
                         getattr(model, j_key).extend(lst)
                     else:
-                        setattr(model, j_key,
-                                self._get_or_404(
-                                    model_link,
-                                    self._cfg.api_manager.get_model(
-                                        self._cfg.resource_name_case(j_key))))
+                        setattr(model, j_key, self._get_or_404(link_ids,
+                                self._cfg.api_manager.get_model(
+                                    self._cfg.resource_name_case(j_key))))
 
+        # loop through main nodes
         for j_node in j_dict:
+            # update model fields
             _json_to_model_fields(j_dict[j_node])
+
+            # update model relationships
             if self._cfg.use_link_nodes \
                     and self._cfg.links_node in j_dict[j_node]:
-                _json_to_model_links(j_dict[j_node][self._cfg.links_node])
+                # using "links" node
+                _json_to_model_rels(j_dict[j_node][self._cfg.links_node])
             else:
-                _json_to_model_links(j_dict[j_node])
+                # no "links" node, saving on same level with fields
+                _json_to_model_rels(j_dict[j_node])
 
 
 class GetRequestProcessor(RequestProcessor):
@@ -162,25 +184,22 @@ class GetRequestProcessor(RequestProcessor):
         super(GetRequestProcessor, self).__init__(cfg, request_parser)
 
     def _process(self):
-        if len(self._rp.idents) > 0:
-            resources = self._get_all(self._rp.idents)
-        else:
-            resources = self._all()
-
         if self._rp.link:
-            assert len(resources) > 0, 'No parent resource found for links'
-            for resc in resources:
-                links = getattr(resc, self._rp.link)
-                self._render_as_list = isinstance(links, list)
-                if self._render_as_list:
-                    self._resources.extend(links)
-                else:
-                    self._resources.append(links)
-                self._process_includes_for(links)
+            target_class = self._cfg.api_manager.get_model(self._rp.link)
+            join_class = self._cfg.model_class
         else:
-            self._process_includes_for(resources)
-            self._render_as_list = len(self._rp.idents) != 1
-            self._resources.extend(resources)
+            target_class = self._cfg.model_class
+            join_class = None
+
+        if len(self._rp.idents) > 0:
+            resources = self._get_all_or_404(self._rp.idents,
+                                             target_class, join_class)
+        else:
+            resources = self._get_all(target_class)
+
+        self._process_includes_for(resources)
+        self._render_as_list = len(self._rp.idents) != 1
+        self._resources.extend(resources)
 
     def _process_includes_for(self, resources):
 
@@ -196,10 +215,16 @@ class GetRequestProcessor(RequestProcessor):
 
     def _set_include(self, resc, inc):
         if hasattr(resc, inc):
-            k = pluralize(inc)
-            if k not in self._links:
-                self._links[k] = []
-            self._links[k].append(getattr(resc, inc))
+            # need a plural resource name, includes are always added as lists
+            inc_key = pluralize(inc)
+            if inc_key not in self._links:
+                self._links[inc_key] = []
+            # todo should we check for duplicates here and
+            # remove from builder process?
+            # todo if inc is a list will it get loaded by calling
+            # getattr, do we need to limit here what loads or handle
+            # this in the builder process?
+            self._links[inc_key].append(getattr(resc, inc))
 
 
 class DeleteRequestProcessor(RequestProcessor):
@@ -210,7 +235,7 @@ class DeleteRequestProcessor(RequestProcessor):
 
     def _process(self):
         for i in self._rp.idents:
-            obj = self._get_or_404(i)
+            obj = self._get_or_404(i, self._cfg.model_class)
             self._cfg.db.session.delete(obj)
         self._cfg.db.session.commit()
 
@@ -222,7 +247,7 @@ class PostRequestProcessor(RequestProcessor):
         super(PostRequestProcessor, self).__init__(cfg, request_parser)
 
     def _process(self):
-        # todo - handle creating many models per post
+        # todo - handle many inserts per post
         json = request.json
         with self._cfg.db.session.no_autoflush:
             model = self._cfg.model_class()
@@ -238,10 +263,12 @@ class PutRequestProcessor(RequestProcessor):
         super(PutRequestProcessor, self).__init__(cfg, request_parser)
 
     def _process(self):
-        # todo - handle updating many models per put
+        # todo - handle many updates per put
         json = request.json
         with self._cfg.db.session.no_autoflush:
-            model = self._get_or_404(self._rp.idents[0])
+            # todo are we validating in parser to make sure there is at least
+            # one id for a PUT request?
+            model = self._get_or_404(self._rp.idents[0], self._cfg.model_class)
             self._json_to_model(json, model)
         self._cfg.db.session.commit()
         self.resources.append(model)

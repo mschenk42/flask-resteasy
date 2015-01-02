@@ -8,6 +8,8 @@ import datetime
 
 from flask import current_app
 
+from sqlalchemy.inspection import inspect
+
 from inflection import underscore, camelize, singularize, pluralize
 
 from .factories import ParserFactory, ProcessorFactory, BuilderFactory
@@ -102,12 +104,6 @@ class APIConfig(object):
         return current_app.api_manager
 
     @property
-    def logger(self):
-        """Logger instance for current application
-        """
-        return current_app.logger
-
-    @property
     def fields(self):
         """All fields defined for the :attr:`model_class`.
         """
@@ -161,6 +157,8 @@ class APIConfig(object):
         """Relationships that are  marshaled to and from the models
         and JSON requests and responses. The default is all relationships.
         """
+        # todo - do we need to break out into allowed_rel_to_model
+        # and allow_rel_from_model?
         return self._get_allowed_relationships()
 
     @property
@@ -316,7 +314,7 @@ class APIConfig(object):
     def _get_fields(self):
         if self._fields is None:
             self._fields = set(
-                [c.name for c in self.model_class.__table__.columns])
+                [c for c in inspect(self.model_class).column_attrs._data])
         return self._fields
 
     def _get_field_types(self):
@@ -428,13 +426,10 @@ class APIConfig(object):
 
     def _get_relationships(self):
         if self._relationships is None:
-            # _sa_class_manager may not be the sanctioned way
-            # to lookup relationships, since it's protected
             self._relationships = set(
-                [n for n in self.model_class._sa_class_manager
-                 if n not in self.fields])
+                [c for c in inspect(self.model_class).relationships._data])
         return self._relationships
-
+    
     def _get_use_link_nodes(self):
         return True
 
