@@ -4,6 +4,7 @@
     ~~~~~~~~~~~~~~~~~~~~~~
 
 """
+from abc import abstractmethod
 from flask import request, abort, current_app
 
 
@@ -18,6 +19,11 @@ class RequestParser(object):
 
     def __init__(self, cfg, **kwargs):
         self._cfg = cfg
+        self._idents = []
+        self._link = None
+        self._filter = None
+        self._sort = None
+        self._include = None
         self._parse(**kwargs)
 
     @property
@@ -115,10 +121,14 @@ class RequestParser(object):
         """
         return 'include'
 
+    @abstractmethod
     def _parse(self, **kwargs):
+        """Initiates the parsing process.
+        Template method that needs to implemented in subclasses
+        """
+        pass
 
-        # parse id route param
-        self._idents = []
+    def _parse_idents(self, kwargs):
         if self._cfg.id_route_param in kwargs and kwargs[
                 self._cfg.id_route_param] is not None:
             self._idents = kwargs[self._cfg.id_route_param].split(',')
@@ -131,8 +141,7 @@ class RequestParser(object):
                         % (self._cfg.id_route_param, self._idents))
                     abort(404)
 
-        # parse link route param
-        self._link = None
+    def _parse_link(self, kwargs):
         if self._cfg.link_route_param in kwargs and kwargs[
                 self._cfg.link_route_param] is not None:
             self._link = self._cfg.model_case(
@@ -151,25 +160,13 @@ class RequestParser(object):
                     'Link route [%s] not allowed' % self._link)
                 abort(403)
 
-        # parse filter query param
-        self._filter = None
-        if self.filter_qp in request.args and request.args[
-                self.filter_qp] is not None:
-            self._filter = self._parse_filter(request.args[self.filter_qp])
+    def _parse_filter(self):
+        if self.filter_qp not in request.args or request.args[
+                self.filter_qp] is None:
+            return
+        else:
+            filter_str = request.args[self.filter_qp]
 
-        # parse sort query param
-        self._sort = None
-        if self.sort_qp in request.args and request.args[
-                self.sort_qp] is not None:
-            self._sort = self._parse_sort(request.args[self.sort_qp])
-
-        # parse include query param
-        self._include = None
-        if self.include_qp in request.args and request.args[
-                self.include_qp] is not None:
-            self._include = self._parse_include(request.args[self.include_qp])
-
-    def _parse_filter(self, filter_str):
         # Filters applies to either the primary or link resource
         # if there is a link resource then we need its cfg object
         if self.link is None:
@@ -178,10 +175,10 @@ class RequestParser(object):
             link_resc = self._cfg.resource_case_name(self.link)
             cfg = current_app.api_manager.get_cfg(link_resc)
 
-        rv = {}
         if len(filter_str) == 0:
-            return rv
+            return
         else:
+            self._filter = {}
             filters = filter_str.split(self.qp_key_pairs_del)
             for f in filters:
                 filter_pair = f.split(self.qp_key_val_del)
@@ -190,7 +187,7 @@ class RequestParser(object):
                     abort(404)
                 filter_key = cfg.model_case(filter_pair[0])
                 if filter_key in cfg.allowed_filter:
-                    rv[filter_key] = filter_pair[1]
+                    self._filter[filter_key] = filter_pair[1]
                 else:
                     if filter_key not in cfg.fields:
                         current_app.logger.debug('Filter [%s] unknown field'
@@ -200,9 +197,14 @@ class RequestParser(object):
                         current_app.logger.debug('Filter [%s] not allowed'
                                                  % filter_key)
                         abort(403)
-        return rv
 
-    def _parse_sort(self, sort_str):
+    def _parse_sort(self):
+        if self.sort_qp not in request.args or request.args[
+                self.sort_qp] is None:
+            return
+        else:
+            sort_str = request.args[self.sort_qp]
+
         # Sort applies to either the primary or link resource
         # if there is a link resource then we need its cfg object
         if self.link is None:
@@ -211,10 +213,10 @@ class RequestParser(object):
             link_resc = self._cfg.resource_case_name(self.link)
             cfg = current_app.api_manager.get_cfg(link_resc)
 
-        rv = {}
         if len(sort_str) == 0:
-            return rv
+            return
         else:
+            self._sort = {}
             sorts = sort_str.split(self.qp_key_pairs_del)
             for s in sorts:
                 if s[:1] == '-':
@@ -225,7 +227,7 @@ class RequestParser(object):
                     order = 'asc'
                 fld = cfg.model_case(fld)
                 if fld in cfg.allowed_sort:
-                    rv[fld] = order
+                    self._sort[fld] = order
                 else:
                     if fld not in cfg.fields:
                         current_app.logger.debug(
@@ -234,9 +236,14 @@ class RequestParser(object):
                     else:
                         current_app.logger.debug('Sort [%s] not allowed' % fld)
                         abort(403)
-        return rv
 
-    def _parse_include(self, include_str):
+    def _parse_include(self):
+        if self.include_qp not in request.args or request.args[
+                self.include_qp] is None:
+            return
+        else:
+            include_str = request.args[self.include_qp]
+
         # Includes applies to either the primary or link resource
         # if there is a link resource then we need its cfg object
         if self.link is None:
@@ -245,15 +252,15 @@ class RequestParser(object):
             link_resc = self._cfg.resource_case_name(self.link)
             cfg = current_app.api_manager.get_cfg(link_resc)
             
-        rv = set()
         if len(include_str) == 0:
-            return rv
+            return
         else:
+            self._include = set()
             includes = include_str.split(self.qp_key_pairs_del)
             for i in includes:
                 i = cfg.model_case(i)
                 if i in cfg.allowed_include:
-                    rv.add(i)
+                    self._include.add(i)
                 else:
                     if i not in cfg.relationships:
                         current_app.logger.debug(
@@ -263,4 +270,38 @@ class RequestParser(object):
                         current_app.logger.debug(
                             'Include [%s] not allowed' % i)
                         abort(403)
-        return rv
+
+
+class GetRequestParser(RequestParser):
+    """Parses request parameters for HTTP GET requests
+    """
+    def _parse(self, **kwargs):
+
+        # what order we parse in matters
+        # do idents and link before filter, sort & include
+        self._parse_idents(kwargs)
+        self._parse_link(kwargs)
+        self._parse_filter()
+        self._parse_sort()
+        self._parse_include()
+
+
+class PostRequestParser(RequestParser):
+    """Parses request parameters for HTTP POST requests
+    """
+    def _parse(self, **kwargs):
+        self._parse_idents(kwargs)
+
+
+class PutRequestParser(RequestParser):
+    """Parses request parameters for HTTP PUT requests
+    """
+    def _parse(self, **kwargs):
+        self._parse_idents(kwargs)
+
+
+class DeleteRequestParser(RequestParser):
+    """Parses request parameters for HTTP DELETE requests
+    """
+    def _parse(self, **kwargs):
+        self._parse_idents(kwargs)

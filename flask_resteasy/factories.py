@@ -6,7 +6,8 @@
 """
 from flask import request
 
-from .parsers import RequestParser
+from .parsers import GetRequestParser, PostRequestParser, PutRequestParser
+from .parsers import DeleteRequestParser
 from .processors import GetRequestProcessor, PostRequestProcessor
 from .processors import DeleteRequestProcessor, PutRequestProcessor
 from .builders import ResponseBuilder
@@ -25,7 +26,14 @@ class ParserFactory(object):
                        route parameters and query parameters for the
                        current HTTP request
         """
-        return RequestParser(cfg, **kwargs)
+        if request.method == 'GET':
+            return GetRequestParser(cfg, **kwargs)
+        elif request.method == 'POST':
+            return PostRequestParser(cfg, **kwargs)
+        elif request.method == 'DELETE':
+            return DeleteRequestParser(cfg, **kwargs)
+        elif request.method == 'PUT':
+            return PutRequestParser(cfg, **kwargs)
 
 
 class ProcessorFactory(object):

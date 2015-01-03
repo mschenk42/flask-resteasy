@@ -108,6 +108,9 @@ class RequestProcessor(object):
         return model_class.query.get_or_404(ident)
 
     def _copy(self, model, fields, field_defaults=None, model_class=None):
+        # todo, move copy and copy_models methods into inventory project
+        # if it's a large collection it could have scaling issue
+        # do this on the database server?
         if model_class is None:
             model_class = self._cfg.model_class
         else:
@@ -184,6 +187,7 @@ class GetRequestProcessor(RequestProcessor):
         super(GetRequestProcessor, self).__init__(cfg, request_parser)
 
     def _process(self):
+        # todo, include try catch for database errors?
         if self._rp.link:
             target_class = self._cfg.api_manager.get_model(self._rp.link)
             join_class = self._cfg.model_class
@@ -234,6 +238,7 @@ class DeleteRequestProcessor(RequestProcessor):
         super(DeleteRequestProcessor, self).__init__(cfg, request_parser)
 
     def _process(self):
+        # todo, include try catch for database errors?
         for i in self._rp.idents:
             obj = self._get_or_404(i, self._cfg.model_class)
             self._cfg.db.session.delete(obj)
@@ -248,6 +253,7 @@ class PostRequestProcessor(RequestProcessor):
 
     def _process(self):
         # todo - handle many inserts per post
+        # todo, include try catch for database errors?
         json = request.json
         with self._cfg.db.session.no_autoflush:
             model = self._cfg.model_class()
@@ -263,11 +269,10 @@ class PutRequestProcessor(RequestProcessor):
         super(PutRequestProcessor, self).__init__(cfg, request_parser)
 
     def _process(self):
+        # todo, include try catch for database errors?
         # todo - handle many updates per put
         json = request.json
         with self._cfg.db.session.no_autoflush:
-            # todo are we validating in parser to make sure there is at least
-            # one id for a PUT request?
             model = self._get_or_404(self._rp.idents[0], self._cfg.model_class)
             self._json_to_model(json, model)
         self._cfg.db.session.commit()
