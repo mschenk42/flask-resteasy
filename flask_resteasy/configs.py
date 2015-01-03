@@ -339,7 +339,7 @@ class APIConfig(object):
 
     @staticmethod
     def _get_resource_name_case():
-        return lambda s: s.lower()
+        return lambda s: camelize(s).lower()
 
     def _get_resource_name(self):
         if self._resource_name is None:
