@@ -24,6 +24,8 @@ class RequestParser(object):
         self._filter = None
         self._sort = None
         self._include = None
+        self._page = None
+        self._per_page = None
         self._parse(**kwargs)
 
     @property
@@ -92,6 +94,18 @@ class RequestParser(object):
         return self._include
 
     @property
+    def page(self):
+        """Page number requested for a paginated request.
+        """
+        return self._page
+
+    @property
+    def per_page(self):
+        """Number of items requested per page.
+        """
+        return self._per_page
+
+    @property
     def qp_key_pairs_del(self):
         """Delimiter for separating multiple key value pairs.
         """
@@ -121,6 +135,28 @@ class RequestParser(object):
         """
         return 'include'
 
+    @property
+    def page_qp(self):
+        """Query parameter for current per page requested for a paginated
+        request. It's also used to build the meta pagination response
+        """
+        return 'page'
+
+    @property
+    def per_page_qp(self):
+        """Query parameter for setting the number of items per page for a
+        paginated request. It's also used to build the meta
+        pagination response.
+        """
+        return 'per_page'
+
+    @property
+    def no_pages_param(self):
+        """Not al query parameter but it's used when building
+        the meta pagination response
+        """
+        return 'no_pages'
+
     @abstractmethod
     def _parse(self, **kwargs):
         """Initiates the parsing process.
@@ -129,43 +165,44 @@ class RequestParser(object):
         pass
 
     def _parse_idents(self, kwargs):
-        if self._cfg.id_route_param in kwargs and kwargs[
-                self._cfg.id_route_param] is not None:
-            self._idents = kwargs[self._cfg.id_route_param].split(',')
-            for i in self._idents:
-                try:
-                    int(i)
-                except ValueError:
-                    current_app.logger.debug(
-                        '[%s] route param are not Integers [%s]'
-                        % (self._cfg.id_route_param, self._idents))
-                    abort(404)
+        idents = kwargs.get(self._cfg.id_route_param, None)
+        if idents is None:
+            return
+
+        self._idents = idents.split(',')
+        for i in self._idents:
+            try:
+                int(i)
+            except ValueError:
+                current_app.logger.debug(
+                    '[%s] route param are not Integers [%s]'
+                    % (self._cfg.id_route_param, self._idents))
+                abort(404)
 
     def _parse_link(self, kwargs):
-        if self._cfg.link_route_param in kwargs and kwargs[
-                self._cfg.link_route_param] is not None:
-            self._link = self._cfg.model_case(
-                kwargs[self._cfg.link_route_param])
-            if len(self._idents) == 0:
-                current_app.debug('No [%s] specified for link route [%s]'
-                                  % (self._cfg.id_route_param,
-                                     self._link))
-                abort(404)
-            elif self._link not in self._cfg.relationships:
-                current_app.logger.debug('Link [%s] is unknown relationship'
-                                         % self._link)
-                abort(404)
-            elif self._link not in self._cfg.allowed_relationships:
-                current_app.logger.debug(
-                    'Link route [%s] not allowed' % self._link)
-                abort(403)
+        link = kwargs.get(self._cfg.link_route_param, None)
+        if link is None:
+            return
+
+        self._link = self._cfg.model_case(link)
+        if len(self._idents) == 0:
+            current_app.debug('No [%s] specified for link route [%s]'
+                              % (self._cfg.id_route_param,
+                                 self._link))
+            abort(404)
+        elif self._link not in self._cfg.relationships:
+            current_app.logger.debug('Link [%s] is unknown relationship'
+                                     % self._link)
+            abort(404)
+        elif self._link not in self._cfg.allowed_relationships:
+            current_app.logger.debug(
+                'Link route [%s] not allowed' % self._link)
+            abort(403)
 
     def _parse_filter(self):
-        if self.filter_qp not in request.args or request.args[
-                self.filter_qp] is None:
+        filter_str = request.args.get(self.filter_qp, None)
+        if filter_str is None:
             return
-        else:
-            filter_str = request.args[self.filter_qp]
 
         # Filters applies to either the primary or link resource
         # if there is a link resource then we need its cfg object
@@ -199,11 +236,9 @@ class RequestParser(object):
                         abort(403)
 
     def _parse_sort(self):
-        if self.sort_qp not in request.args or request.args[
-                self.sort_qp] is None:
+        sort_str = request.args.get(self.sort_qp, None)
+        if sort_str is None:
             return
-        else:
-            sort_str = request.args[self.sort_qp]
 
         # Sort applies to either the primary or link resource
         # if there is a link resource then we need its cfg object
@@ -238,11 +273,9 @@ class RequestParser(object):
                         abort(403)
 
     def _parse_include(self):
-        if self.include_qp not in request.args or request.args[
-                self.include_qp] is None:
+        include_str = request.args.get(self.include_qp, None)
+        if include_str is None:
             return
-        else:
-            include_str = request.args[self.include_qp]
 
         # Includes applies to either the primary or link resource
         # if there is a link resource then we need its cfg object
@@ -271,6 +304,29 @@ class RequestParser(object):
                             'Include [%s] not allowed' % i)
                         abort(403)
 
+    def _parse_pagination(self):
+        page = request.args.get(self.page_qp, None)
+        per_page = request.args.get(self.per_page_qp, None)
+
+        if page is None or per_page is None:
+            return
+
+        if page:
+            try:
+                self._page = int(page)
+            except ValueError:
+                current_app.logger.debug(
+                    '[%s] of [%s] is invalid' % (self.page_qp, page))
+                abort(400)
+
+        if per_page:
+            try:
+                self._per_page = int(per_page)
+            except ValueError:
+                current_app.logger.debug(
+                    '[%s] of [%s] is invalid' % (self.per_page_qp, per_page))
+                abort(400)
+
 
 class GetRequestParser(RequestParser):
     """Parses request parameters for HTTP GET requests
@@ -284,6 +340,7 @@ class GetRequestParser(RequestParser):
         self._parse_filter()
         self._parse_sort()
         self._parse_include()
+        self._parse_pagination()
 
 
 class PostRequestParser(RequestParser):

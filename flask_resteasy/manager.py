@@ -34,7 +34,7 @@ class APIManager(object):
     """
 
     def __init__(self, app=None, db=None, cfg_class=APIConfig, decorators=None,
-                 bp=None, excludes=None, methods=None):
+                 bp=None, excludes=None, methods=None, max_per_page=20):
         self._db = db
         self._cfg_class = cfg_class
         self._bp = bp
@@ -42,12 +42,13 @@ class APIManager(object):
         self._methods = methods
         self._model_for_resources = {}
         self._cfg_for_resources = {}
+        self._max_per_page = max_per_page
         if app is not None:
             self.init_app(app, db, cfg_class, decorators,
-                          bp, excludes, methods)
+                          bp, excludes, methods, max_per_page)
 
     def init_app(self, app, db, cfg_class=APIConfig, decorators=None,
-                 bp=None, excludes=None, methods=None):
+                 bp=None, excludes=None, methods=None, max_per_page=20):
         """Stores the :class:`flask.Flask` application object,
         :class:`flask.ext.sqlalchemy.SQLAlchemy object and any global
         default settings.
@@ -72,6 +73,9 @@ class APIManager(object):
 
         :param methods: global default list of HTTP methods to register
                         for each endpoint, the default setting is ['GET']
+
+        :param max_per_page: global default maximum items returned
+                             per page for a paginated response
         """
         app.api_manager = self
         self._db = db
@@ -82,6 +86,7 @@ class APIManager(object):
             self._methods = set(methods)
         else:
             self._methods = {'GET'}
+        self._max_per_page = max_per_page
         if decorators:
             APIView.decorators = decorators
 
@@ -138,7 +143,7 @@ class APIManager(object):
             return set([])
 
     def register_api(self, model_class, cfg_class=None, methods=None,
-                     bp=None, excludes=None):
+                     bp=None, excludes=None, max_per_page=None):
         """Registers an API endpoint for a SQLAlchemy model.
 
         :param model_class: class:`flask.ext.sqlalchemy.Model` to registered
@@ -158,6 +163,9 @@ class APIManager(object):
                          see `exclude` info in class
                          :class:`flask_resteasy.configs.APIConfig`
 
+        :param max_per_page: default maximum items returned per page
+                             for a paginated response
+
         This example registers the models using default settings
         set when initializing the APIManager::
 
@@ -175,11 +183,14 @@ class APIManager(object):
         else:
             methods = self._methods
 
+        if max_per_page is None:
+            max_per_page = self._max_per_page
+
         if cfg_class is None:
             cfg_class = self._cfg_class
 
         # create API configuration object for the model class
-        cfg = cfg_class(model_class, excludes)
+        cfg = cfg_class(model_class, excludes, max_per_page)
 
         # register API configuration object by resource name
         self._register_cfg(cfg, cfg.resource_name, cfg.resource_name_plural)

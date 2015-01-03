@@ -43,6 +43,7 @@ class ResponseBuilder(object):
                     self._rp.resources[0])
 
         self._build_includes(json_dic)
+        self._build_pagination(json_dic)
         self._json_dic = json_dic
 
     def _build_includes(self, json_dic):
@@ -123,6 +124,13 @@ class ResponseBuilder(object):
                     else:
                         self._set_link_jnode(dic, link_jkey, None)
         return dic
+
+    def _build_pagination(self, json_dic):
+        rp = self._rp
+        if rp.pager:
+            json_dic['meta'] = {rp.pager.page_no_param: rp.pager.page,
+                                rp.pager.no_pages_param: rp.pager.no_pages,
+                                rp.pager.per_page_param: rp.pager.per_page}
 
     def _set_link_jnode(self, dic, link_jkey, link):
         if self._cfg.use_link_nodes:

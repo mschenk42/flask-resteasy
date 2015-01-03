@@ -26,6 +26,7 @@ class RequestProcessor(object):
         self._resources = []
         self._links = {}
         self._render_as_list = False
+        self._pager = None
         self._process()
 
     @abstractmethod
@@ -64,6 +65,12 @@ class RequestProcessor(object):
         else:
             return self._rp.link
 
+    @property
+    def pager(self):
+        """Encapsulates paginated queries
+        """
+        return self._pager
+
     def _build_query(self, idents, target_class, join_class=None):
         q = target_class.query
         if join_class:
@@ -87,8 +94,8 @@ class RequestProcessor(object):
         return q
 
     def _get_all(self, model_class):
-        # todo will need to limit what is returned from database here
-        return self._build_query([], model_class).all()
+        self._pager = Pager(self._rp, self._build_query([], model_class))
+        return self._pager.items
 
     def _get_all_or_404(self, idents, target_class=None, join_class=None):
         if target_class is None:
@@ -96,8 +103,8 @@ class RequestProcessor(object):
         else:
             target_class = target_class
         q = self._build_query(idents, target_class, join_class)
-        # todo will need to limit what is returned from database here
-        rv = q.all()
+        self._pager = Pager(self._rp, q)
+        rv = self._pager.items
         # if there are no filters and no results returned then not found
         if self._rp.filter is None and len(rv) == 0:
             abort(404)
@@ -277,3 +284,73 @@ class PutRequestProcessor(RequestProcessor):
             self._json_to_model(json, model)
         self._cfg.db.session.commit()
         self.resources.append(model)
+
+
+class Pager(object):
+    """
+    Paginates a query
+    """
+    def __init__(self, rp, query):
+        self._page = rp.page if rp.page else 1
+        if rp.per_page is None or rp.per_page > rp._cfg.max_per_page:
+            self._per_page = rp._cfg.max_per_page
+        else:
+            self._per_page = rp.per_page
+
+        self._query = query
+        self._no_pages = 0
+        self._items = None
+        self._page_no_param = rp.page_qp
+        self._per_page_param = rp.per_page_qp
+        self._no_pages_param = rp.no_pages_param
+        self._paginate()
+
+    @property
+    def page_no_param(self):
+        """Number of pages key used when building pagination
+        meta response.
+        """
+        return self._page_no_param
+
+    @property
+    def per_page_param(self):
+        """Number of items per page key used when build pagination
+        meta response.
+        """
+        return self._per_page_param
+
+    @property
+    def no_pages_param(self):
+        """Number of pages key used when build pagination
+        meta response.
+        """
+        return self._no_pages_param
+
+    @property
+    def page(self):
+        """Current page number
+        """
+        return self._page
+
+    @property
+    def per_page(self):
+        """Results per page
+        """
+        return self._per_page
+    
+    @property
+    def no_pages(self):
+        """Total number of pages available
+        """
+        return self._no_pages
+
+    @property
+    def items(self):
+        """Results for current page
+        """
+        return self._items
+
+    def _paginate(self):
+        pagination = self._query.paginate(self._page, self._per_page)
+        self._no_pages = pagination.pages
+        self._items = pagination.items

@@ -55,9 +55,10 @@ class APIConfig(object):
          :meth:`flask_resteasy.views.APIManager.register_api` or for all
          endpoints when creating the :class:`flask_resteasy.views.APIManager`.
     """
-    def __init__(self, model_class, excludes):
+    def __init__(self, model_class, excludes, max_per_page):
         self._model = model_class
         self._excludes = excludes
+        self._max_per_page = max_per_page
 
         # These attributes are set on access because some
         # SQLAlchemy models may not be initialized yet.
@@ -102,6 +103,12 @@ class APIConfig(object):
         """:class:`flask_resteasy.views.APIManager` instance
         """
         return current_app.api_manager
+
+    @property
+    def max_per_page(self):
+        """Maximum items returned per page
+        """
+        return self._max_per_page
 
     @property
     def fields(self):

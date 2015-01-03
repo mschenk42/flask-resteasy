@@ -344,6 +344,31 @@ class TestJSONAPI(TestAPI):
             self.assertTrue('distributors' in j['linked'])
             self.assertTrue(len(j['linked']['distributors']) == 1)
 
+    def test_paginated(self):
+        with self.client as c:
+            rv = c.get(self.get_url('/products'),
+                       headers=self.get_headers(),
+                       query_string={'page': 1, 'per_page': 1})
+            self.assertTrue(rv.status_code == 200)
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
+            self.assertTrue('products' in j)
+            self.assertTrue(len(j['products']) == 1)
+            self.assertTrue('meta' in j)
+
+            rv = c.get(self.get_url('/products'),
+                       headers=self.get_headers(),
+                       query_string={'page': 2, 'per_page': 1})
+            self.assertTrue(rv.status_code == 200)
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
+            self.assertTrue('products' in j)
+            self.assertTrue(len(j['products']) == 1)
+            self.assertTrue('meta' in j)
+
+            rv = c.get(self.get_url('/products'),
+                       headers=self.get_headers(),
+                       query_string={'page': 3, 'per_page': 1})
+            self.assertTrue(rv.status_code == 404)
+
 
 class TestEmberAPI(TestJSONAPI):
     @classmethod
