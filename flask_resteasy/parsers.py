@@ -184,17 +184,19 @@ class RequestParser(object):
         if link is None:
             return
 
-        self._link = self._cfg.model_case(link)
+        # store as passed in on url, do not convert case
+        self._link = link
         if len(self._idents) == 0:
             current_app.debug('No [%s] specified for link route [%s]'
                               % (self._cfg.id_route_param,
                                  self._link))
             abort(404)
-        elif self._link not in self._cfg.relationships:
+        elif self._cfg.model_case(self._link) not in self._cfg.relationships:
             current_app.logger.debug('Link [%s] is unknown relationship'
                                      % self._link)
             abort(404)
-        elif self._link not in self._cfg.allowed_relationships:
+        elif self._cfg.model_case(self._link) not in \
+                self._cfg.allowed_relationships:
             current_app.logger.debug(
                 'Link route [%s] not allowed' % self._link)
             abort(403)
@@ -284,7 +286,7 @@ class RequestParser(object):
         else:
             link_resc = self._cfg.resource_case_name(self.link)
             cfg = current_app.api_manager.get_cfg(link_resc)
-            
+
         if len(include_str) == 0:
             return
         else:

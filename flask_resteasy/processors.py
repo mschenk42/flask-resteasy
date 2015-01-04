@@ -196,7 +196,8 @@ class GetRequestProcessor(RequestProcessor):
     def _process(self):
         # todo, include try catch for database errors?
         if self._rp.link:
-            target_class = self._cfg.api_manager.get_model(self._rp.link)
+            target_class = self._cfg.api_manager.get_model(
+                self._cfg.resource_name_case(self._rp.link))
             join_class = self._cfg.model_class
         else:
             target_class = self._cfg.model_class
@@ -208,8 +209,17 @@ class GetRequestProcessor(RequestProcessor):
         else:
             resources = self._get_all(target_class)
 
+        # Should we render as a list? - tricky logic here
+        # if no route parm ids or,
+        # if route parm ids provided is more than 1 & it's not a link resource
+        # or, if it's a link resource and the link name is plural,
+        # then true, otherwise false
+        self._render_as_list = (
+            (len(self._rp.idents) == 0) or
+            (len(self._rp.idents) > 1 and self._rp.link is None) or
+            (self._rp.link and self._rp.link == pluralize(self._rp.link)))
+
         self._process_includes_for(resources)
-        self._render_as_list = len(self._rp.idents) != 1
         self._resources.extend(resources)
 
     def _process_includes_for(self, resources):
@@ -337,7 +347,7 @@ class Pager(object):
         """Results per page
         """
         return self._per_page
-    
+
     @property
     def no_pages(self):
         """Total number of pages available
