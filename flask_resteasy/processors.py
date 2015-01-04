@@ -6,7 +6,7 @@
 """
 from abc import abstractmethod
 
-from flask import request, abort, current_app
+from flask import request, abort
 
 from inflection import pluralize
 
@@ -35,22 +35,22 @@ class RequestProcessor(object):
 
     @property
     def resources(self):
-        """List of resource models objects set as a
-        result of processing the request.
+        """List of resource models objects set as a result of processing
+        the request.
         """
         return self._resources
 
     @property
     def render_as_list(self):
-        """Should the results for the request by rendered
-        as a list or as a dictionary?
+        """Should the results for the request by rendered as a list or
+        as a dictionary?
         """
         return self._render_as_list
 
     @property
     def links(self):
-        """List of link model objects set as a
-        result of processing the request.
+        """List of link model objects set as a result of processing
+        the request.
         """
         return self._links
 
@@ -77,9 +77,8 @@ class RequestProcessor(object):
             if len(idents) > 0:
                 q = q.join(join_class).filter(join_class.id.in_(idents))
             else:
-                # ids not provided is an error, parser should catch this
-                current_app.logger.debug('No [%s] specified for link route'
-                                         % self._cfg.id_route_param)
+                # ids not provided is an error, this shouldn't happen,
+                # parser should catch this
                 abort(400)
         else:
             if len(idents) > 0:
@@ -317,8 +316,7 @@ class Pager(object):
 
     @property
     def page_no_param(self):
-        """Number of pages key used when building pagination
-        meta response.
+        """Number of pages key used when building pagination meta response.
         """
         return self._page_no_param
 

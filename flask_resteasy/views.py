@@ -34,6 +34,7 @@ class APIView(MethodView):
         parser = self._cfg.parser_factory.create(self._cfg, **kwargs)
         processor = self._cfg.processor_factory.create(self._cfg, parser)
         if parser.link:
+            # for links we need to us the builder registered with the link
             link_cfg = self._cfg.api_manager.get_cfg(
                 self._cfg.resource_name_case(parser.link))
             builder = link_cfg.builder_factory.create(link_cfg, processor)

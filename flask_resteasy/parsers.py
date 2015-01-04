@@ -174,9 +174,6 @@ class RequestParser(object):
             try:
                 int(i)
             except ValueError:
-                current_app.logger.debug(
-                    '[%s] route param are not Integers [%s]'
-                    % (self._cfg.id_route_param, self._idents))
                 abort(404)
 
     def _parse_link(self, kwargs):
@@ -187,18 +184,14 @@ class RequestParser(object):
         # store as passed in on url, do not convert case
         self._link = link
         if len(self._idents) == 0:
-            current_app.debug('No [%s] specified for link route [%s]'
-                              % (self._cfg.id_route_param,
-                                 self._link))
+            # No ids for a link route
             abort(404)
         elif self._cfg.model_case(self._link) not in self._cfg.relationships:
-            current_app.logger.debug('Link [%s] is unknown relationship'
-                                     % self._link)
+            # Link does not match any known relationships
             abort(404)
         elif self._cfg.model_case(self._link) not in \
                 self._cfg.allowed_relationships:
-            current_app.logger.debug(
-                'Link route [%s] not allowed' % self._link)
+            # Valid link name but it's not allowed
             abort(403)
 
     def _parse_filter(self):
@@ -222,19 +215,17 @@ class RequestParser(object):
             for f in filters:
                 filter_pair = f.split(self.qp_key_val_del)
                 if len(filter_pair) != 2:
-                    current_app.logger.debug('Invalid filter pair [%s]' % f)
+                    # Not a valid filter pair
                     abort(404)
                 filter_key = cfg.model_case(filter_pair[0])
                 if filter_key in cfg.allowed_filter:
                     self._filter[filter_key] = filter_pair[1]
                 else:
                     if filter_key not in cfg.fields:
-                        current_app.logger.debug('Filter [%s] unknown field'
-                                                 % filter_key)
+                        # Filter key is not a known field
                         abort(404)
                     else:
-                        current_app.logger.debug('Filter [%s] not allowed'
-                                                 % filter_key)
+                        # Filter key is not allowed
                         abort(403)
 
     def _parse_sort(self):
@@ -267,11 +258,10 @@ class RequestParser(object):
                     self._sort[fld] = order
                 else:
                     if fld not in cfg.fields:
-                        current_app.logger.debug(
-                            'Sort [%s] unknown field' % fld)
+                        # Unknown sort field
                         abort(404)
                     else:
-                        current_app.logger.debug('Sort [%s] not allowed' % fld)
+                        # Sort filed not allowed
                         abort(403)
 
     def _parse_include(self):
@@ -298,12 +288,10 @@ class RequestParser(object):
                     self._include.add(i)
                 else:
                     if i not in cfg.relationships:
-                        current_app.logger.debug(
-                            'Include [%s] unknown relationship' % i)
+                        # Unknown relationship name for include
                         abort(404)
                     else:
-                        current_app.logger.debug(
-                            'Include [%s] not allowed' % i)
+                        # Relationship name not allowed for include
                         abort(403)
 
     def _parse_pagination(self):
@@ -317,16 +305,12 @@ class RequestParser(object):
             try:
                 self._page = int(page)
             except ValueError:
-                current_app.logger.debug(
-                    '[%s] of [%s] is invalid' % (self.page_qp, page))
                 abort(400)
 
         if per_page:
             try:
                 self._per_page = int(per_page)
             except ValueError:
-                current_app.logger.debug(
-                    '[%s] of [%s] is invalid' % (self.per_page_qp, per_page))
                 abort(400)
 
 
