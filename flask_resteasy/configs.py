@@ -12,7 +12,9 @@ from sqlalchemy.inspection import inspect
 
 from inflection import underscore, camelize, singularize, pluralize
 
-from .factories import ParserFactory, ProcessorFactory, BuilderFactory
+from flask_resteasy.factories import ParserFactory
+from flask_resteasy.factories import ProcessorFactory
+from flask_resteasy.factories import BuilderFactory
 
 
 class APIConfig(object):

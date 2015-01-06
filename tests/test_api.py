@@ -187,7 +187,7 @@ class TestJSONAPI(TestAPI):
         with self.client as c:
             rv = c.get(self.get_url('/products/1/links/invalid'),
                        headers=self.get_headers())
-            self.assertTrue(rv.status_code == 404)
+            self.assertTrue(rv.status_code == 400)
 
     def test_get_all(self):
         with self.client as c:
@@ -394,7 +394,7 @@ class TestEmberAPI(TestJSONAPI):
         with self.client as c:
             rv = c.get(self.get_url('/products/1/invalid'),
                        headers=self.get_headers())
-            self.assertTrue(rv.status_code == 404)
+            self.assertTrue(rv.status_code == 400)
 
     def test_include_list_obj(self):
         with self.client as c:
@@ -557,39 +557,39 @@ class TestInvalidRequests(TestAPI):
         with self.client as c:
             rv = c.get(self.get_url('/products/1/links/invalid'),
                        headers=self.get_headers())
-            self.assertTrue(rv.status_code == 404)
+            self.assertTrue(rv.status_code == 400)
 
     def test_invalid_idents(self):
         with self.client as c:
             rv = c.get(self.get_url('/products/1,a'),
                        headers=self.get_headers())
-            self.assertTrue(rv.status_code == 404)
+            self.assertTrue(rv.status_code == 400)
 
     def test_invalid_filter(self):
         with self.client as c:
             rv = c.get(self.get_url('/products'),
                        headers=self.get_headers(),
                        query_string={'filter': 'names:Green Lettuce'})
-            self.assertTrue(rv.status_code == 404)
+            self.assertTrue(rv.status_code == 400)
             # test valid filter attribute without filter condition
             rv = c.get(self.get_url('/products'),
                        headers=self.get_headers(),
                        query_string={'filter': 'name'})
-            self.assertTrue(rv.status_code == 404)
+            self.assertTrue(rv.status_code == 400)
 
     def test_invalid_sort(self):
         with self.client as c:
             rv = c.get(self.get_url('/products'),
                        headers=self.get_headers(),
                        query_string={'sort': '-names'})
-            self.assertTrue(rv.status_code == 404)
+            self.assertTrue(rv.status_code == 400)
 
     def test_invalid_include(self):
         with self.client as c:
             rv = c.get(self.get_url('/products'),
                        headers=self.get_headers(),
                        query_string={'include': 'invalid'})
-            self.assertTrue(rv.status_code == 404)
+            self.assertTrue(rv.status_code == 400)
 
     def test_not_allowed_include(self):
         with self.client as c:

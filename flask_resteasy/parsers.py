@@ -5,7 +5,8 @@
 
 """
 from abc import abstractmethod
-from flask import request, abort, current_app
+from flask import request, current_app
+from flask_resteasy.errors import UnableToProcess
 
 
 class RequestParser(object):
@@ -174,7 +175,7 @@ class RequestParser(object):
             try:
                 int(i)
             except ValueError:
-                abort(404)
+                raise UnableToProcess('IDs [%s] are invalid' % idents)
 
     def _parse_link(self, kwargs):
         link = kwargs.get(self._cfg.link_route_param, None)
@@ -185,14 +186,14 @@ class RequestParser(object):
         self._link = link
         if len(self._idents) == 0:
             # No ids for a link route
-            abort(404)
+            raise UnableToProcess('No IDs provided for link route')
         elif self._cfg.model_case(self._link) not in self._cfg.relationships:
             # Link does not match any known relationships
-            abort(404)
+            raise UnableToProcess('Link route is not valid')
         elif self._cfg.model_case(self._link) not in \
                 self._cfg.allowed_relationships:
             # Valid link name but it's not allowed
-            abort(403)
+            raise UnableToProcess('Link route not allowed', 403)
 
     def _parse_filter(self):
         filter_str = request.args.get(self.filter_qp, None)
@@ -216,17 +217,18 @@ class RequestParser(object):
                 filter_pair = f.split(self.qp_key_val_del)
                 if len(filter_pair) != 2:
                     # Not a valid filter pair
-                    abort(404)
+                    raise UnableToProcess('Filter [%s] is invalid' % f)
                 filter_key = cfg.model_case(filter_pair[0])
                 if filter_key in cfg.allowed_filter:
                     self._filter[filter_key] = filter_pair[1]
                 else:
                     if filter_key not in cfg.fields:
                         # Filter key is not a known field
-                        abort(404)
+                        raise UnableToProcess('Filter field [%s] is unknown'
+                                              % filter_key)
                     else:
-                        # Filter key is not allowed
-                        abort(403)
+                        raise UnableToProcess('Filter field [%s] not allowed'
+                                              % filter_key, 403)
 
     def _parse_sort(self):
         sort_str = request.args.get(self.sort_qp, None)
@@ -259,10 +261,11 @@ class RequestParser(object):
                 else:
                     if fld not in cfg.fields:
                         # Unknown sort field
-                        abort(404)
+                        raise UnableToProcess('Sort field [%s] unknown' % fld)
                     else:
-                        # Sort filed not allowed
-                        abort(403)
+                        # Sort field not allowed
+                        raise UnableToProcess('Sort field [%s] not allowed'
+                                              % fld)
 
     def _parse_include(self):
         include_str = request.args.get(self.include_qp, None)
@@ -289,10 +292,11 @@ class RequestParser(object):
                 else:
                     if i not in cfg.relationships:
                         # Unknown relationship name for include
-                        abort(404)
+                        raise UnableToProcess('Include name [%s] unknown' % i)
                     else:
                         # Relationship name not allowed for include
-                        abort(403)
+                        raise UnableToProcess('Include name [%s] not allowed'
+                                              % i, 403)
 
     def _parse_pagination(self):
         page = request.args.get(self.page_qp, None)
@@ -305,13 +309,14 @@ class RequestParser(object):
             try:
                 self._page = int(page)
             except ValueError:
-                abort(400)
+                raise UnableToProcess('Page number [%s] is not integer' % page)
 
         if per_page:
             try:
                 self._per_page = int(per_page)
             except ValueError:
-                abort(400)
+                raise UnableToProcess('Per Page number [%s] is not integer'
+                                      % per_page)
 
 
 class GetRequestParser(RequestParser):

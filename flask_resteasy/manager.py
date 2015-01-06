@@ -6,8 +6,10 @@
 """
 from flask import current_app
 
-from .configs import APIConfig
-from .views import APIView
+from flask_resteasy.configs import APIConfig
+from flask_resteasy.views import APIView
+from flask_resteasy.errors import UnableToProcess
+from flask_resteasy.errors import handle_errors
 
 
 class APIManager(object):
@@ -31,10 +33,13 @@ class APIManager(object):
 
     :param methods: global default list of HTTP methods to register
                     for each endpoint, the default setting is ['GET']
+
+    :param error_handler: error_handler for UnableToProcess exceptions
     """
 
     def __init__(self, app=None, db=None, cfg_class=APIConfig, decorators=None,
-                 bp=None, excludes=None, methods=None, max_per_page=20):
+                 bp=None, excludes=None, methods=None, max_per_page=20,
+                 error_handler=handle_errors):
         self._db = db
         self._cfg_class = cfg_class
         self._bp = bp
@@ -45,10 +50,11 @@ class APIManager(object):
         self._max_per_page = max_per_page
         if app is not None:
             self.init_app(app, db, cfg_class, decorators,
-                          bp, excludes, methods, max_per_page)
+                          bp, excludes, methods, max_per_page, error_handler)
 
     def init_app(self, app, db, cfg_class=APIConfig, decorators=None,
-                 bp=None, excludes=None, methods=None, max_per_page=20):
+                 bp=None, excludes=None, methods=None, max_per_page=20,
+                 error_handler=handle_errors):
         """Stores the :class:`flask.Flask` application object,
         :class:`flask.ext.sqlalchemy.SQLAlchemy object and any global
         default settings.
@@ -76,19 +82,37 @@ class APIManager(object):
 
         :param max_per_page: global default maximum items returned
                              per page for a paginated response
+
+        :param error_handler: error_handler for UnableToProcess exceptions
         """
         app.api_manager = self
         self._db = db
         self._cfg_class = cfg_class
         self._excludes = excludes
         self._bp = bp
+
         if methods:
             self._methods = set(methods)
         else:
             self._methods = {'GET'}
         self._max_per_page = max_per_page
+
         if decorators:
             APIView.decorators = decorators
+
+        # Don't use relative imports with Flask, had an odd issues only with
+        # Python 3 when registering error handlers,  if I used a relative
+        # import for the exception class, Flask registered the exception with
+        # '.ext.' in the package name.  This caused the Flask error handling to
+        # not find a match for the exception when doing the isinstance
+        # type check.
+        #
+        # Below is the code that fails with Python 3.
+        #
+        # if isinstance(e, typecheck):
+        #   return handler(e)
+        #
+        app.register_error_handler(UnableToProcess, error_handler)
 
     @property
     def db(self):

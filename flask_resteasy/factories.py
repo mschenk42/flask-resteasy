@@ -5,12 +5,15 @@
 
 """
 from flask import request
-
-from .parsers import GetRequestParser, PostRequestParser, PutRequestParser
-from .parsers import DeleteRequestParser
-from .processors import GetRequestProcessor, PostRequestProcessor
-from .processors import DeleteRequestProcessor, PutRequestProcessor
-from .builders import ResponseBuilder
+from flask_resteasy.parsers import GetRequestParser
+from flask_resteasy.parsers import PutRequestParser
+from flask_resteasy.parsers import PostRequestParser
+from flask_resteasy.parsers import DeleteRequestParser
+from flask_resteasy.processors import GetRequestProcessor
+from flask_resteasy.processors import PutRequestProcessor
+from flask_resteasy.processors import PostRequestProcessor
+from flask_resteasy.processors import DeleteRequestProcessor
+from flask_resteasy.builders import ResponseBuilder
 
 
 class ParserFactory(object):
