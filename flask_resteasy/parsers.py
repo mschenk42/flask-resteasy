@@ -265,7 +265,7 @@ class RequestParser(object):
                     else:
                         # Sort field not allowed
                         raise UnableToProcess('Sort field [%s] not allowed'
-                                              % fld)
+                                              % fld, 403)
 
     def _parse_include(self):
         include_str = request.args.get(self.include_qp, None)
@@ -302,7 +302,7 @@ class RequestParser(object):
         page = request.args.get(self.page_qp, None)
         per_page = request.args.get(self.per_page_qp, None)
 
-        if page is None or per_page is None:
+        if page is None:
             return
 
         if page:

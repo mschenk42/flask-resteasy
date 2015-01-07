@@ -126,7 +126,8 @@ class ResponseBuilder(object):
         for link in self._processor.links:
             link_key = self._cfg.json_case(link)
             if self._cfg.use_link_nodes:
-                json_dic[self._cfg.linked_node] = {}
+                if self._cfg.linked_node not in json_dic:
+                    json_dic[self._cfg.linked_node] = {}
                 json_dic[self._cfg.linked_node][link_key] = []
             else:
                 json_dic[link_key] = []
@@ -175,7 +176,7 @@ class ResponseBuilder(object):
         """For a resource return it urls for each id
         """
         if isinstance(resources, list):
-            rv = ['%s/%d' % (request.url, r.id) for r in resources]
+            rv = ['%s/%s' % (request.url, r.id) for r in resources]
         else:
-            rv = [('%s/%d' % (request.url, resources.id))]
+            rv = [('%s/%s' % (request.url, resources.id))]
         return rv

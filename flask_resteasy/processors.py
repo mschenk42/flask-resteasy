@@ -232,17 +232,14 @@ class GetRequestProcessor(RequestProcessor):
                     self._set_include(resources, include)
 
     def _set_include(self, resc, inc):
-        if hasattr(resc, inc):
-            # need a plural resource name, includes are always added as lists
-            inc_key = pluralize(inc)
-            if inc_key not in self._links:
-                self._links[inc_key] = []
-            # todo should we check for duplicates here and
-            # remove from builder process?
-            # todo if inc is a list will it get loaded by calling
-            # getattr, do we need to limit here what loads or handle
-            # this in the builder process?
-            self._links[inc_key].append(getattr(resc, inc))
+        if inc not in self._links:
+            self._links[inc] = []
+        # todo should we check for duplicates here and
+        # remove from builder process?
+        # todo if inc is a list will it get loaded by calling
+        # getattr, do we need to limit here what loads or handle
+        # this in the builder process?
+        self._links[inc].append(getattr(resc, inc))
 
 
 class DeleteRequestProcessor(RequestProcessor):
@@ -270,6 +267,7 @@ class PostRequestProcessor(RequestProcessor):
         with self._cfg.db.session.no_autoflush:
             model = self._cfg.model_class()
             self._json_to_model(json, model)
+        self._cfg.db.session.add(model)
         self._cfg.db.session.commit()
         self._resources.append(model)
 
@@ -287,8 +285,13 @@ class PutRequestProcessor(RequestProcessor):
             model = self._get_or_404(self._parser.idents[0],
                                      self._cfg.model_class)
             self._json_to_model(json, model)
+        self._cfg.db.session.add(model)
         self._cfg.db.session.commit()
         self.resources.append(model)
+        # todo - Do we need to only return objects on put if changed by server?
+        # We should only be returning the object(s) added in the response
+        # if the server modified what was saved, like for example an updated
+        # date set by the server
 
 
 class Pager(object):

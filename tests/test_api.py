@@ -7,83 +7,88 @@
     :license: BSD, see LICENSE for more details.
 """
 import unittest
-import os
 import json
 
 from flask import Flask
 from flask.ext.sqlalchemy import SQLAlchemy
 
-from flask.ext.resteasy.manager import APIManager
-from flask_resteasy.configs import APIConfig, EmberConfig
-
+from flask_resteasy.manager import APIManager
+from flask_resteasy.configs import EmberConfig
 
 app = None
 db = SQLAlchemy()
 
 
 class TestAPI(unittest.TestCase):
-    class Distributor(db.Model):
-        __tablename__ = 'distributors'
 
-        id = db.Column(db.Integer, primary_key=True)
-        name = db.Column(db.String(64), nullable=False)
-        description = db.Column(db.Text)
+    # Models copied and adapted from
+    # https://github.com/Vertabelo/vertabelo-sqlalchemy
 
-    class Product(db.Model):
-        __tablename__ = 'products'
+    class Order (db.Model):
+        """Order Model
+        """
+        __tablename__ = "order"
+        id = db.Column('id', db.Integer, primary_key=True)
+        order_no = db.Column('order_no', db.String)
+        client_id = db.Column('client_id', db.Integer,
+                              db.ForeignKey('client.id'))
+        client = db.relationship('Client', foreign_keys=client_id)
 
-        id = db.Column(db.Integer, primary_key=True)
-        name = db.Column(db.String(64), nullable=False)
-        description = db.Column(db.Text)
-        distributor_code = db.Column(db.String(32))
-        supplier_code = db.Column(db.String(32))
-        lead_time = db.Column(db.Integer)
-        min_order_qty = db.Column(db.Integer)
-        max_order_qty = db.Column(db.Integer)
-        reorder_level = db.Column(db.Integer)
-        reorder_qty = db.Column(db.Integer)
-        _private_fld = db.Column(db.String(32))
-        created = db.Column(db.DATE)
-        distributor_id = db.Column(
-            db.Integer, db.ForeignKey('distributors.id'),
-            nullable=False)
-        distributor = db.relationship(
-            'Distributor', backref=db.backref(__tablename__))
+    class Product (db.Model):
+        """Product Model
+        """
+        __tablename__ = "product"
+        id = db.Column('id', db.Integer, primary_key=True)
+        product_category_id = db.Column('product_category_id', db.Integer,
+                                        db.ForeignKey('product_category.id'))
+        sku = db.Column('sku', db.String)
+        name = db.Column('name', db.String)
+        price = db.Column('price', db.BigInteger)
+        description = db.Column('description', db.String)
+        image = db.deferred(db.Column('image', db.LargeBinary))
+        product_category = db.relationship('ProductCategory',
+                                           foreign_keys=product_category_id)
 
-    class StockCount(db.Model):
-        __tablename__ = 'stock_counts'
+    class OrderItem (db.Model):
+        """Order Item Model
+        """
+        __tablename__ = "order_item"
+        id = db.Column('id', db.Integer, primary_key=True)
+        order_id = db.Column('order_id', db.Integer, db.ForeignKey('order.id'))
+        product_id = db.Column('product_id', db.Integer,
+                               db.ForeignKey('product.id'))
+        amount = db.Column('amount', db.Integer)
+        order = db.relationship('Order', foreign_keys=order_id,
+                                backref=db.backref('order_items'))
+        product = db.relationship('Product', foreign_keys=product_id)
 
-        id = db.Column(db.Integer, primary_key=True)
-        description = db.Column(db.Text)
-        processed = db.Column(db.Boolean)
-        started_by = db.Column(db.String(64))
+    class ProductCategory (db.Model):
+        """Product Category Model
+        """
+        __tablename__ = "product_category"
+        id = db.Column('id', db.Integer, primary_key=True)
+        name = db.Column('name', db.String)
+        parent_category_id = db.Column('parent_category_id', db.Integer,
+                                       db.ForeignKey('product_category.id'))
+        product_category = db.relationship('ProductCategory',
+                                           foreign_keys=parent_category_id)
 
-    class StockLevel(db.Model):
-        __tablename__ = 'stock_levels'
-
-        id = db.Column(db.Integer, primary_key=True)
-        on_hand_qty = db.Column(db.Integer)
-        processed = db.Column(db.Boolean)
-
-        product_id = db.Column(db.Integer,
-                               db.ForeignKey('products.id'))
-        product = db.relationship('Product',
-                                  backref=db.backref(__tablename__))
-
-        stockcount_id = db.Column(db.Integer,
-                                  db.ForeignKey('stock_counts.id'))
-        stock_count = db.relationship('StockCount',
-                                      backref=db.backref(__tablename__))
+    class Client (db.Model):
+        """Client Model
+        """
+        __tablename__ = "client"
+        id = db.Column('id', db.Integer, primary_key=True)
+        full_name = db.Column('full_name', db.String)
+        email = db.Column('email', db.String)
+        private = db.Column('private', db.String)
 
     @classmethod
     def setUpClass(cls):
         global app, db
 
-        basedir = os.path.abspath(os.path.dirname(__file__))
         app = Flask(__name__)
         app.config['TESTING'] = True
-        app.config['SQLALCHEMY_DATABASE_URI'] = \
-            'sqlite:///' + os.path.join(basedir, 'data-test.sqlite')
+        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
         db.init_app(app)
 
         cls.ctx = app.app_context()
@@ -102,56 +107,55 @@ class TestAPI(unittest.TestCase):
         self.load_data()
 
     def load_data(self):
-        distributor1 = TestAPI.Distributor()
-        distributor1.name = 'Sysco Inc'
-        distributor1.description = "Distributor with a variety of brands"
 
-        distributor2 = TestAPI.Distributor()
-        distributor2.name = 'Whole Foods'
-        distributor2.description = "Provide fresh and organic produce"
+        # clients
+        author = TestAPI.Client(full_name='Arthur Dent', email='arthur@hh.net')
+        ford = TestAPI.Client(full_name='Ford Prefect', email='ford@hh.net')
+        marvin = TestAPI.Client(full_name='Marvin', email='marvin@hh.net')
+        db.session.add_all([author, ford, marvin])
 
-        product1 = TestAPI.Product()
-        product1.name = 'Green Lettuce'
-        product1.description = 'Organic green lettuce from the state of CA'
-        product1.distributor_code = 'SYSCO'
-        product1.lead_time = 5
-        product1.min_order_qty = 12
-        product1.max_order_qty = 144
-        product1.reorder_level = 12
-        product1.reorder_qty = 24
-        product1.distributor = distributor1
+        # categories
+        food = TestAPI.ProductCategory(name='Food')
+        fish = TestAPI.ProductCategory(name='Fish', product_category=[food])
+        produce = TestAPI.ProductCategory(name='Produce',
+                                          product_category=[food])
+        supplies = TestAPI.ProductCategory(name='Supplies')
+        cleaning = TestAPI.ProductCategory(name='Cleaning',
+                                           product_category=[supplies])
+        db.session.add_all([food, fish, produce, supplies, cleaning])
 
-        product2 = TestAPI.Product()
-        product2.name = 'Red Leaf Lettuce'
-        product2.description = 'Organic red leaf lettuce from the state of CA'
-        product2.distributor_code = 'SYSCO'
-        product2.lead_time = 5
-        product2.min_order_qty = 12
-        product2.max_order_qty = 144
-        product2.reorder_level = 12
-        product2.reorder_qty = 24
-        product2.distributor = distributor1
+        # products
+        fish = TestAPI.Product(name='Lake Perch',
+                               product_category=fish,
+                               sku='LPERCH',
+                               price=12.00,
+                               description='Lake Perch from Lake Superior')
+        lettuce = TestAPI.Product(name='Green Lettuce',
+                                  product_category=produce,
+                                  sku='GLETTUCE',
+                                  price=4.95,
+                                  description='Locally produced green lettuce')
+        db.session.add_all([fish, lettuce])
 
-        stockcount1 = TestAPI.StockCount()
-        stockcount1.description = 'Initial stock count'
-        stockcount1.processed = False
+        # orders
+        order_1 = TestAPI.Order(order_no=1, client=author)
+        order_item_1 = TestAPI.OrderItem(order=order_1, product=fish, amount=1)
+        order_item_2 = TestAPI.OrderItem(order=order_1, product=lettuce,
+                                         amount=1)
+        db.session.add_all([order_1, order_item_1, order_item_2])
 
-        stocklevel1 = TestAPI.StockLevel()
-        stocklevel1.on_hand_qty = 12
-        stocklevel1.processed = False
-        stocklevel1.stock_count = stockcount1
-        stocklevel1.product = product1
+        order_2 = TestAPI.Order(order_no=1, client=marvin)
+        order_item_3 = TestAPI.OrderItem(order=order_2, product=lettuce,
+                                         amount=2)
+        db.session.add_all([order_2, order_item_3])
 
-        stocklevel2 = TestAPI.StockLevel()
-        stocklevel2.on_hand_qty = 100
-        stocklevel2.processed = False
-        stocklevel2.stock_count = stockcount1
-        stocklevel2.product = product2
-
-        db.session.add(product1, product2)
         db.session.commit()
 
     def destroy_db(self):
+        # db session remove is required here to support in memory database
+        # and is a best practice
+        # see http://flask-testing.readthedocs.org/en/latest/
+        db.session.remove()
         db.drop_all()
 
     def get_url(self, resource_url):
@@ -163,275 +167,253 @@ class TestAPI(unittest.TestCase):
         return headers
 
 
-class TestJSONAPI(TestAPI):
+class TestGetRequest(TestAPI):
+
     @classmethod
     def setUpClass(cls):
-        super(TestJSONAPI, cls).setUpClass()
-        api_manager = APIManager(app, db, cfg_class=APIConfig,
-                                 methods=['GET', 'PUT', 'POST', 'DELETE'])
+        super(TestGetRequest, cls).setUpClass()
+        api_manager = APIManager(app, db)
+        api_manager.register_api(TestAPI.Client,
+                                 excludes={'all': ['private']})
+        api_manager.register_api(TestAPI.ProductCategory)
         api_manager.register_api(TestAPI.Product)
-        api_manager.register_api(TestAPI.Distributor)
-        api_manager.register_api(TestAPI.StockCount)
-        api_manager.register_api(TestAPI.StockLevel)
-
-    def test_get_relationship(self):
-        with self.client as c:
-            rv = c.get(self.get_url('/products/1/links/distributor'),
-                       headers=self.get_headers())
-            self.assertTrue(rv.status_code == 200)
-            j = json.loads(rv.data.decode(encoding='UTF-8'))
-            self.assertTrue('distributor' in j)
-            self.assertTrue(isinstance(j['distributor'], dict))
-
-    def test_get_invalid_relationship(self):
-        with self.client as c:
-            rv = c.get(self.get_url('/products/1/links/invalid'),
-                       headers=self.get_headers())
-            self.assertTrue(rv.status_code == 400)
 
     def test_get_all(self):
         with self.client as c:
-            rv = c.get(self.get_url('/products'), headers=self.get_headers())
+            rv = c.get(self.get_url('/clients'), headers=self.get_headers())
             self.assertTrue(rv.status_code == 200)
             j = json.loads(rv.data.decode(encoding='UTF-8'))
-            self.assertTrue('products' in j)
-            self.assertTrue(len(j['products']) == 2)
+            self.assertTrue(isinstance(j['clients'], list))
+            self.assertTrue(len(j['clients']) == 3)
 
-    def test_get(self):
+    def test_get_one(self):
         with self.client as c:
-            rv = c.get(self.get_url('/products/1'), headers=self.get_headers())
+            rv = c.get(self.get_url('/clients/1'), headers=self.get_headers())
             self.assertTrue(rv.status_code == 200)
             j = json.loads(rv.data.decode(encoding='UTF-8'))
-            self.assertTrue('product' in j)
-            self.assertTrue(isinstance(j['product'], dict))
+            self.assertTrue(isinstance(j['client'], dict))
+            self.assertTrue(len(j) == 1)
 
-    def test_get_not_found(self):
+    def test_get_two(self):
         with self.client as c:
-            rv = c.get(self.get_url('/products/100'),
+            rv = c.get(self.get_url('/clients/1,2'),
                        headers=self.get_headers())
+            self.assertTrue(rv.status_code == 200)
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
+            self.assertTrue('clients' in j)
+            self.assertTrue(len(j['clients']) == 2)
+
+    def test_get_404(self):
+        with self.client as c:
+            rv = c.get(self.get_url('/clients/10'), headers=self.get_headers())
             self.assertTrue(rv.status_code == 404)
 
-    def test_get_multiple(self):
+    def test_get_with_links(self):
         with self.client as c:
-            rv = c.get(self.get_url('/products/1,2'),
-                       headers=self.get_headers())
-            self.assertTrue(rv.status_code == 200)
-            j = json.loads(rv.data.decode(encoding='UTF-8'))
-            self.assertTrue('products' in j)
-            self.assertTrue(len(j['products']) == 2)
-
-    def test_post(self):
-        p_json = {
-            "product": {
-                "distributor_code": "SYSCO",
-                "category": 1,
-                "brand": 1,
-                "distributor": 1,
-                "unit": 1,
-                "name": "Green Lettuce",
-                "description": "Organic green lettuce from the state of CA",
-                "reorder_qty": 24,
-                "min_order_qty": 12,
-                "max_order_qty": 144,
-                "supplier_code": "",
-                "reorder_level": 12,
-                "lead_time": 5
-            }
-        }
-
-        with self.client as c:
-            rv = c.post(self.get_url('/products'), data=json.dumps(p_json),
-                        headers=self.get_headers())
-            self.assertTrue(rv.status_code == 201)
-            j = json.loads(rv.data.decode(encoding='UTF-8'))
-            self.assertTrue(
-                ('Location', self.get_url('/products/3')) == rv.headers[2])
-            self.assertTrue(j['product']['description'] ==
-                            "Organic green lettuce from the state of CA")
-            self.assertTrue(j['product']['min_order_qty'] == 12)
-
-            rv = c.get(self.get_url('/products/3'), headers=self.get_headers())
-            j = json.loads(rv.data.decode(encoding='UTF-8'))
-            self.assertTrue(rv.status_code == 200)
-            self.assertTrue(j['product']['description'] ==
-                            "Organic green lettuce from the state of CA")
-            self.assertTrue(j['product']['min_order_qty'] == 12)
-
-    def test_put(self):
-        p_json = {
-            "product": {
-                "name": "Greenest Lettuce",
-                "description": "Organic green lettuce from the state of CA",
-                "min_order_qty": 100
-            }
-        }
-        with self.client as c:
-            rv = c.put(self.get_url('/products/1'), data=json.dumps(p_json),
-                       headers=self.get_headers())
-            self.assertTrue(rv.status_code == 200)
-            j = json.loads(rv.data.decode(encoding='UTF-8'))
-            self.assertTrue(j['product']['description'] ==
-                            "Organic green lettuce from the state of CA")
-            self.assertTrue(j['product']['min_order_qty'] == 100)
-
             rv = c.get(self.get_url('/products/1'), headers=self.get_headers())
             self.assertTrue(rv.status_code == 200)
             j = json.loads(rv.data.decode(encoding='UTF-8'))
-            self.assertTrue(j['product']['description'] ==
-                            "Organic green lettuce from the state of CA")
-            self.assertTrue(j['product']['min_order_qty'] == 100)
+            self.assertTrue(j['product']['links']['product_category'] == 1)
 
-    def test_delete(self):
+    def test_get_link(self):
         with self.client as c:
-            rv = c.delete(self.get_url('/products/1'),
-                          headers=self.get_headers())
+            rv = c.get(self.get_url('/products/1/links/product_category'),
+                       headers=self.get_headers())
             self.assertTrue(rv.status_code == 200)
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
+            self.assertTrue(isinstance(j['product_category'], dict))
+
+    def test_get_private(self):
+        with self.client as c:
             rv = c.get(self.get_url('/products/1'), headers=self.get_headers())
-            self.assertTrue(rv.status_code == 404)
+            self.assertTrue(rv.status_code == 200)
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
+            self.assertTrue('private' not in j['product'])
+
+
+class TestFilter(TestAPI):
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestFilter, cls).setUpClass()
+        api_manager = APIManager(app, db)
+        api_manager.register_api(TestAPI.Client,
+                                 excludes={'all': ['private']})
+        api_manager.register_api(TestAPI.Product)
 
     def test_filter(self):
         with self.client as c:
-            rv = c.get(self.get_url('/products'),
-                       headers=self.get_headers(),
-                       query_string={'filter': 'name:Green Lettuce'})
+            rv = c.get(self.get_url('/clients'), headers=self.get_headers(),
+                       query_string={'filter': 'email:arthur@hh.net'})
             self.assertTrue(rv.status_code == 200)
             j = json.loads(rv.data.decode(encoding='UTF-8'))
-            self.assertTrue('products' in j)
-            self.assertTrue(j['products'][0]['name'] == 'Green Lettuce')
-            self.assertTrue(len(j['products']) == 1)
+            self.assertTrue(len(j) == 1)
+            self.assertTrue(j['clients'][0]['email'] == 'arthur@hh.net')
+
+    def test_filter_many(self):
+        with self.client as c:
+            rv = c.get(self.get_url('/products'), headers=self.get_headers(),
+                       query_string={'filter': 'name:Lake Perch,sku:LPERCH'})
+            self.assertTrue(rv.status_code == 200)
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
+            self.assertTrue(len(j) == 1)
+            self.assertTrue(j['products'][0]['sku'] == 'LPERCH')
+
+    def test_filter_unknown(self):
+        with self.client as c:
+            rv = c.get(self.get_url('/clients'), headers=self.get_headers(),
+                       query_string={'filter': 'unknown:something'})
+            self.assertTrue(rv.status_code == 400)
+
+    def test_filter_unauthorized(self):
+        with self.client as c:
+            rv = c.get(self.get_url('/clients'), headers=self.get_headers(),
+                       query_string={'filter': 'private:sensitive data'})
+            self.assertTrue(rv.status_code == 403)
+
+
+class TestSort(TestAPI):
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestSort, cls).setUpClass()
+        api_manager = APIManager(app, db)
+        api_manager.register_api(TestAPI.Client,
+                                 excludes={'all': ['private']})
+        api_manager.register_api(TestAPI.Product)
+
+    def test_sort(self):
+        with self.client as c:
+            rv = c.get(self.get_url('/clients'), headers=self.get_headers(),
+                       query_string={'sort': 'full_name'})
+            self.assertTrue(rv.status_code == 200)
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
+            self.assertTrue(j['clients'][0]['email'] == 'arthur@hh.net')
+            self.assertTrue(j['clients'][2]['email'] == 'marvin@hh.net')
+
+    def test_sort_many(self):
+        with self.client as c:
+            rv = c.get(self.get_url('/clients'), headers=self.get_headers(),
+                       query_string={'sort': 'full_name,email'})
+            self.assertTrue(rv.status_code == 200)
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
+            self.assertTrue(j['clients'][0]['email'] == 'arthur@hh.net')
+            self.assertTrue(j['clients'][2]['email'] == 'marvin@hh.net')
 
     def test_sort_desc(self):
         with self.client as c:
-            rv = c.get(self.get_url('/products'),
-                       headers=self.get_headers(),
-                       query_string={'sort': '-name'})
+            rv = c.get(self.get_url('/clients'), headers=self.get_headers(),
+                       query_string={'sort': '-full_name'})
             self.assertTrue(rv.status_code == 200)
             j = json.loads(rv.data.decode(encoding='UTF-8'))
-            self.assertTrue('products' in j)
-            self.assertTrue(j['products'][0]['name'] == 'Red Leaf Lettuce')
-            self.assertTrue(len(j['products']) == 2)
+            self.assertTrue(j['clients'][0]['email'] == 'marvin@hh.net')
+            self.assertTrue(j['clients'][2]['email'] == 'arthur@hh.net')
 
-    def test_sort_asc(self):
+    def test_sort_unknown(self):
         with self.client as c:
-            rv = c.get(self.get_url('/products'),
-                       headers=self.get_headers(),
+            rv = c.get(self.get_url('/clients'), headers=self.get_headers(),
                        query_string={'sort': 'name'})
+            self.assertTrue(rv.status_code == 400)
+
+    def test_sort_unauthorized(self):
+        with self.client as c:
+            rv = c.get(self.get_url('/clients'), headers=self.get_headers(),
+                       query_string={'sort': 'private'})
+            self.assertTrue(rv.status_code == 403)
+
+
+class TestInclude(TestAPI):
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestInclude, cls).setUpClass()
+        api_manager = APIManager(app, db)
+        api_manager.register_api(TestAPI.Order)
+        api_manager.register_api(TestAPI.OrderItem)
+        api_manager.register_api(TestAPI.Client)
+        api_manager.register_api(TestAPI.Product,
+                                 excludes={'all': ['product_category']})
+        api_manager.register_api(TestAPI.ProductCategory)
+
+    def test_include(self):
+        with self.client as c:
+            rv = c.get(self.get_url('/orders/1'), headers=self.get_headers(),
+                       query_string={'include': 'order_items'})
             self.assertTrue(rv.status_code == 200)
             j = json.loads(rv.data.decode(encoding='UTF-8'))
-            self.assertTrue('products' in j)
-            self.assertTrue(j['products'][0]['name'] == 'Green Lettuce')
-            self.assertTrue(len(j['products']) == 2)
+            self.assertTrue(len(j['linked']['order_items']) == 2)
 
-    def test_include_list_obj(self):
+    def test_include_many(self):
         with self.client as c:
-            rv = c.get(self.get_url('/products'),
-                       headers=self.get_headers(),
-                       query_string={'include': 'stock_levels'})
+            rv = c.get(self.get_url('/orders/1'), headers=self.get_headers(),
+                       query_string={'include': 'order_items,client'})
             self.assertTrue(rv.status_code == 200)
             j = json.loads(rv.data.decode(encoding='UTF-8'))
-            self.assertTrue('linked' in j)
-            self.assertTrue('stock_levels' in j['linked'])
-            self.assertTrue(len(j['linked']['stock_levels']) == 2)
+            self.assertTrue(len(j['linked']['order_items']) == 2)
+            self.assertTrue(len(j['linked']['client']) == 1)
 
-    def test_include_obj(self):
+    def test_include_unknown(self):
         with self.client as c:
-            rv = c.get(self.get_url('/products'),
-                       headers=self.get_headers(),
-                       query_string={'include': 'distributor'})
-            self.assertTrue(rv.status_code == 200)
-            j = json.loads(rv.data.decode(encoding='UTF-8'))
-            self.assertTrue('linked' in j)
-            self.assertTrue('distributors' in j['linked'])
-            self.assertTrue(len(j['linked']['distributors']) == 1)
+            rv = c.get(self.get_url('/orders/1'), headers=self.get_headers(),
+                       query_string={'include': 'products'})
+            self.assertTrue(rv.status_code == 400)
 
-    def test_paginated(self):
+    def test_include_unauthorized(self):
         with self.client as c:
-            rv = c.get(self.get_url('/products'),
-                       headers=self.get_headers(),
+            rv = c.get(self.get_url('/products/1'), headers=self.get_headers(),
+                       query_string={'include': 'product_category'})
+            self.assertTrue(rv.status_code == 403)
+
+
+class TestPagination(TestAPI):
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestPagination, cls).setUpClass()
+        api_manager = APIManager(app, db)
+        api_manager.register_api(TestAPI.Order)
+
+    def test_pagination(self):
+        with self.client as c:
+            rv = c.get(self.get_url('/orders'), headers=self.get_headers(),
                        query_string={'page': 1, 'per_page': 1})
             self.assertTrue(rv.status_code == 200)
             j = json.loads(rv.data.decode(encoding='UTF-8'))
-            self.assertTrue('products' in j)
-            self.assertTrue(len(j['products']) == 1)
-            self.assertTrue('meta' in j)
+            self.assertTrue(j['meta']['page'] == 1)
+            self.assertTrue(j['meta']['no_pages'] == 2)
+            self.assertTrue(len(j['orders']) == 1)
 
-            rv = c.get(self.get_url('/products'),
-                       headers=self.get_headers(),
+            rv = c.get(self.get_url('/orders'), headers=self.get_headers(),
                        query_string={'page': 2, 'per_page': 1})
             self.assertTrue(rv.status_code == 200)
             j = json.loads(rv.data.decode(encoding='UTF-8'))
-            self.assertTrue('products' in j)
-            self.assertTrue(len(j['products']) == 1)
-            self.assertTrue('meta' in j)
+            self.assertTrue(j['meta']['page'] == 2)
+            self.assertTrue(j['meta']['no_pages'] == 2)
+            self.assertTrue(len(j['orders']) == 1)
 
-            rv = c.get(self.get_url('/products'),
-                       headers=self.get_headers(),
+            rv = c.get(self.get_url('/orders'), headers=self.get_headers(),
                        query_string={'page': 3, 'per_page': 1})
             self.assertTrue(rv.status_code == 404)
 
 
-class TestEmberAPI(TestJSONAPI):
+class TestPostRequest(TestAPI):
+
     @classmethod
     def setUpClass(cls):
-        super(TestJSONAPI, cls).setUpClass()
-        api_manager = APIManager(app, db, cfg_class=EmberConfig,
-                                 methods=['GET', 'PUT', 'POST', 'DELETE'])
-        api_manager.register_api(TestAPI.Product)
-        api_manager.register_api(TestAPI.Distributor)
-        api_manager.register_api(TestAPI.StockCount)
-        api_manager.register_api(TestAPI.StockLevel)
-
-    def test_get_relationship(self):
-        with self.client as c:
-            rv = c.get(self.get_url('/products/1/distributor'),
-                       headers=self.get_headers())
-            self.assertTrue(rv.status_code == 200)
-            j = json.loads(rv.data.decode(encoding='UTF-8'))
-            self.assertTrue('distributor' in j)
-            self.assertTrue(isinstance(j['distributor'], dict))
-
-    def test_get_invalid_relationship(self):
-        with self.client as c:
-            rv = c.get(self.get_url('/products/1/invalid'),
-                       headers=self.get_headers())
-            self.assertTrue(rv.status_code == 400)
-
-    def test_include_list_obj(self):
-        with self.client as c:
-            rv = c.get(self.get_url('/products'),
-                       headers=self.get_headers(),
-                       query_string={'include': 'stockLevels'})
-            self.assertTrue(rv.status_code == 200)
-            j = json.loads(rv.data.decode(encoding='UTF-8'))
-            self.assertTrue('stockLevels' in j)
-            self.assertTrue(len(j['stockLevels']) == 2)
-
-    def test_include_obj(self):
-        with self.client as c:
-            rv = c.get(self.get_url('/products'),
-                       headers=self.get_headers(),
-                       query_string={'include': 'distributor'})
-            self.assertTrue(rv.status_code == 200)
-            j = json.loads(rv.data.decode(encoding='UTF-8'))
-            self.assertTrue('distributors' in j)
-            self.assertTrue(len(j['distributors']) == 1)
+        super(TestPostRequest, cls).setUpClass()
+        api_manager = APIManager(app, db)
+        api_manager.register_api(TestAPI.Product,
+                                 methods=['GET', 'POST', 'PUT', 'DELETE'])
+        api_manager.register_api(TestAPI.ProductCategory)
 
     def test_post(self):
         p_json = {
             "product": {
-                "distributorCode": "SYSCO",
-                "category": 1,
-                "brand": 1,
-                "distributor": 1,
-                "unit": 1,
-                "name": "Green Lettuce",
-                "description": "Organic green lettuce from the state of CA",
-                "reorderQty": 24,
-                "minOrderQty": 12,
-                "maxOrderQty": 144,
-                "supplierCode": "",
-                "reorderLevel": 12,
-                "leadTime": 5
+                "sku": "BEET",
+                "name": 'Beets',
+                "description": "Locally produced beets",
+                "price": 1.95,
+                "links": {'product_category': 2},
             }
         }
 
@@ -440,160 +422,129 @@ class TestEmberAPI(TestJSONAPI):
                         headers=self.get_headers())
             self.assertTrue(rv.status_code == 201)
             j = json.loads(rv.data.decode(encoding='UTF-8'))
-            self.assertTrue(
-                ('Location', self.get_url('/products/3')) == rv.headers[2])
-            self.assertTrue(j['product']['description'] ==
-                            "Organic green lettuce from the state of CA")
-            self.assertTrue(j['product']['minOrderQty'] == 12)
+            self.assertTrue(j['product']['sku'] == "BEET")
+            self.assertTrue(('Location',
+                             self.get_url('/products/3')) == rv.headers[2])
 
+        with self.client as c:
             rv = c.get(self.get_url('/products/3'), headers=self.get_headers())
             self.assertTrue(rv.status_code == 200)
-            j = json.loads(rv.data.decode(encoding='UTF-8'))
-            self.assertTrue(j['product']['description'] ==
-                            "Organic green lettuce from the state of CA")
-            self.assertTrue(j['product']['minOrderQty'] == 12)
-
-    def test_put(self):
-        p_json = {
-            "product": {
-                "name": "Greenest Lettuce",
-                "description": "Organic green lettuce from the state of CA",
-                "minOrderQty": 100
-            }
-        }
-        with self.client as c:
-            rv = c.put(self.get_url('/products/1'), data=json.dumps(p_json),
-                       headers=self.get_headers())
-            self.assertTrue(rv.status_code == 200)
-            j = json.loads(rv.data.decode(encoding='UTF-8'))
-            self.assertTrue(j['product']['description'] ==
-                            "Organic green lettuce from the state of CA")
-            self.assertTrue(j['product']['minOrderQty'] == 100)
-
-            rv = c.get(self.get_url('/products/1'), headers=self.get_headers())
-            self.assertTrue(rv.status_code == 200)
-            j = json.loads(rv.data.decode(encoding='UTF-8'))
-            self.assertTrue(j['product']['description'] ==
-                            "Organic green lettuce from the state of CA")
-            self.assertTrue(j['product']['minOrderQty'] == 100)
 
 
-class TestRegisterAPIExcludes(TestAPI):
+class TestDeleteRequest(TestAPI):
+
     @classmethod
     def setUpClass(cls):
-        super(TestRegisterAPIExcludes, cls).setUpClass()
-        api_manager = APIManager(app, db, cfg_class=APIConfig,
-                                 excludes={'from_model': ['created']})
+        super(TestDeleteRequest, cls).setUpClass()
+        api_manager = APIManager(app, db)
         api_manager.register_api(TestAPI.Product,
-                                 excludes={'from_model': ['reorder_qty']})
-        api_manager.register_api(TestAPI.Distributor)
+                                 methods=['GET', 'POST', 'PUT', 'DELETE'])
 
-    def test_get_with_excludes(self):
-        with self.client as c:
-            rv = c.get(self.get_url('/products/1'), headers=self.get_headers())
-            self.assertTrue(rv.status_code == 200)
-            j = json.loads(rv.data.decode(encoding='UTF-8'))
-            self.assertTrue('product' in j)
-            self.assertTrue(isinstance(j['product'], dict))
-            self.assertTrue('reorder_qty' not in j['product'])
-
-
-class TestMethodRegistration(TestAPI):
-    def test_default_method_registration(self):
-        p_json = {
-            "product": {
-                "distributor_code": "SYSCO",
-                "category": 1,
-                "brand": 1,
-                "distributor": 1,
-                "unit": 1,
-                "name": "Green Lettuce",
-                "description": "Organic green lettuce from the state of CA",
-                "reorder_qty": 24,
-                "min_order_qty": 12,
-                "max_order_qty": 144,
-                "supplier_code": "",
-                "reorder_level": 12,
-                "lead_time": 5
-            }
-        }
-        api_manager = APIManager(app, db, cfg_class=APIConfig)
-        api_manager.register_api(TestAPI.Product)
-        api_manager.register_api(TestAPI.Distributor)
-        api_manager.register_api(TestAPI.StockCount)
-        api_manager.register_api(TestAPI.StockLevel)
+    def test_delete(self):
 
         with self.client as c:
-            rv = c.get(self.get_url('/products/1'), headers=self.get_headers())
-            self.assertTrue(rv.status_code == 200)
-            rv = c.post(self.get_url('/products'), data=json.dumps(p_json),
-                        headers=self.get_headers())
-            self.assertTrue(rv.status_code == 405)
-            rv = c.put(self.get_url('/products/1'), data=json.dumps(p_json),
-                       headers=self.get_headers())
-            self.assertTrue(rv.status_code == 405)
             rv = c.delete(self.get_url('/products/1'),
                           headers=self.get_headers())
-            self.assertTrue(rv.status_code == 405)
+            self.assertTrue(rv.status_code == 200)
+
+        with self.client as c:
+            rv = c.get(self.get_url('/products/1'), headers=self.get_headers())
+            self.assertTrue(rv.status_code == 404)
 
 
-class TestInvalidRequests(TestAPI):
+class TestPutRequest(TestAPI):
+
     @classmethod
     def setUpClass(cls):
-        super(TestInvalidRequests, cls).setUpClass()
-        api_manager = APIManager(app, db, cfg_class=APIConfig,
-                                 excludes={'relationship': ['distributor']})
+        super(TestPutRequest, cls).setUpClass()
+        api_manager = APIManager(app, db)
+        api_manager.register_api(TestAPI.Product,
+                                 methods=['GET', 'POST', 'PUT', 'DELETE'])
+        api_manager.register_api(TestAPI.ProductCategory)
 
+    def test_post(self):
+        p_json = {
+            "product": {
+                "sku": "RLETTUCE",
+                "name": 'Red Lettuce',
+                "description": "Red lettuce grown locally",
+                }
+        }
+
+        with self.client as c:
+            rv = c.put(self.get_url('/products/2'), data=json.dumps(p_json),
+                       headers=self.get_headers())
+            self.assertTrue(rv.status_code == 200)
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
+            self.assertTrue(j['product']['sku'] == "RLETTUCE")
+
+        with self.client as c:
+            rv = c.get(self.get_url('/products/2'), headers=self.get_headers())
+            self.assertTrue(rv.status_code == 200)
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
+            self.assertTrue(j['product']['sku'] == "RLETTUCE")
+
+
+class TestAllowedRequestMethods(TestAPI):
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestAllowedRequestMethods, cls).setUpClass()
+
+    def test_default_allowed(self):
+        api_manager = APIManager(app, db)
         api_manager.register_api(TestAPI.Product)
-        api_manager.register_api(TestAPI.Distributor)
 
-    def test_not_allowed_link(self):
         with self.client as c:
-            rv = c.get(self.get_url('/products/1/links/distributor'),
+            rv = c.get(self.get_url('/products'), headers=self.get_headers())
+            self.assertTrue(rv.status_code == 200)
+            rv = c.post(self.get_url('/products'))
+            self.assertTrue(rv.status_code == 405)
+            rv = c.put(self.get_url('/products/1'))
+            self.assertTrue(rv.status_code == 405)
+            rv = c.delete(self.get_url('/products/1'))
+            self.assertTrue(rv.status_code == 405)
+
+    def test_set_allowed(self):
+        api_manager = APIManager(app, db)
+        api_manager.register_api(TestAPI.Client, methods=['GET', 'DELETE'])
+
+        with self.client as c:
+            rv = c.get(self.get_url('/clients'), headers=self.get_headers())
+            self.assertTrue(rv.status_code == 200)
+            rv = c.post(self.get_url('/clients'))
+            self.assertTrue(rv.status_code == 405)
+            rv = c.put(self.get_url('/clients/1'))
+            self.assertTrue(rv.status_code == 405)
+            rv = c.delete(self.get_url('/clients/1'))
+            self.assertTrue(rv.status_code == 200)
+
+
+class TestEmberConfig(TestAPI):
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestEmberConfig, cls).setUpClass()
+        api_manager = APIManager(app, db, cfg_class=EmberConfig)
+        api_manager.register_api(TestAPI.Order)
+        api_manager.register_api(TestAPI.OrderItem)
+        api_manager.register_api(TestAPI.Client)
+
+    def test_get_resource_camelcase(self):
+        with self.client as c:
+            rv = c.get(self.get_url('/orderItems'), headers=self.get_headers())
+            self.assertTrue(rv.status_code == 200)
+
+    def test_get_link_camelcase(self):
+        with self.client as c:
+            rv = c.get(self.get_url('/orders/1/orderItems'),
                        headers=self.get_headers())
-            self.assertTrue(rv.status_code == 403)
+            self.assertTrue(rv.status_code == 200)
 
-    def test_invalid_link(self):
+    def test_get_field_camelcase(self):
         with self.client as c:
-            rv = c.get(self.get_url('/products/1/links/invalid'),
+            rv = c.get(self.get_url('/clients/1'),
                        headers=self.get_headers())
-            self.assertTrue(rv.status_code == 400)
-
-    def test_invalid_idents(self):
-        with self.client as c:
-            rv = c.get(self.get_url('/products/1,a'),
-                       headers=self.get_headers())
-            self.assertTrue(rv.status_code == 400)
-
-    def test_invalid_filter(self):
-        with self.client as c:
-            rv = c.get(self.get_url('/products'),
-                       headers=self.get_headers(),
-                       query_string={'filter': 'names:Green Lettuce'})
-            self.assertTrue(rv.status_code == 400)
-            # test valid filter attribute without filter condition
-            rv = c.get(self.get_url('/products'),
-                       headers=self.get_headers(),
-                       query_string={'filter': 'name'})
-            self.assertTrue(rv.status_code == 400)
-
-    def test_invalid_sort(self):
-        with self.client as c:
-            rv = c.get(self.get_url('/products'),
-                       headers=self.get_headers(),
-                       query_string={'sort': '-names'})
-            self.assertTrue(rv.status_code == 400)
-
-    def test_invalid_include(self):
-        with self.client as c:
-            rv = c.get(self.get_url('/products'),
-                       headers=self.get_headers(),
-                       query_string={'include': 'invalid'})
-            self.assertTrue(rv.status_code == 400)
-
-    def test_not_allowed_include(self):
-        with self.client as c:
-            rv = c.get(self.get_url('/products'),
-                       headers=self.get_headers(),
-                       query_string={'include': 'distributor'})
-            self.assertTrue(rv.status_code == 403)
+            self.assertTrue(rv.status_code == 200)
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
+            self.assertTrue('fullName' in j['client'])
