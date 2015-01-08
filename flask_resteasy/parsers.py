@@ -205,7 +205,7 @@ class RequestParser(object):
         if self.link is None:
             cfg = self._cfg
         else:
-            link_resc = self._cfg.resource_case_name(self.link)
+            link_resc = self._cfg.resource_name_case(self.link)
             cfg = current_app.api_manager.get_cfg(link_resc)
 
         if len(filter_str) == 0:
@@ -240,7 +240,7 @@ class RequestParser(object):
         if self.link is None:
             cfg = self._cfg
         else:
-            link_resc = self._cfg.resource_case_name(self.link)
+            link_resc = self._cfg.resource_name_case(self.link)
             cfg = current_app.api_manager.get_cfg(link_resc)
 
         if len(sort_str) == 0:
@@ -277,7 +277,7 @@ class RequestParser(object):
         if self.link is None:
             cfg = self._cfg
         else:
-            link_resc = self._cfg.resource_case_name(self.link)
+            link_resc = self._cfg.resource_name_case(self.link)
             cfg = current_app.api_manager.get_cfg(link_resc)
 
         if len(include_str) == 0:

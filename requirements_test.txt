@@ -2,6 +2,3 @@
 nose
 coverage
 tox
-Sphinx
-flake8
-rstcheck

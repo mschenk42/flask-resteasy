@@ -56,7 +56,7 @@ class APIManager(object):
                  bp=None, excludes=None, methods=None, max_per_page=20,
                  error_handler=handle_errors):
         """Stores the :class:`flask.Flask` application object,
-        :class:`flask.ext.sqlalchemy.SQLAlchemy object and any global
+        :class:`flask.ext.sqlalchemy.SQLAlchemy` object and any global
         default settings.
 
         Use this method if you need to instantiate the APIManager before

@@ -81,7 +81,9 @@ class RequestProcessor(object):
             if len(idents) > 0:
                 q = q.filter(target_class.id.in_(idents))
         if self._parser.filter:
-            q = q.filter_by(**self._parser.filter)
+            for f in self._parser.filter:
+                q = q.filter(getattr(target_class, f)
+                             == self._parser.filter[f])
         if self._parser.sort:
             for col, order in self._parser.sort.items():
                 # todo research why we have to access the col this way

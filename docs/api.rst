@@ -3,7 +3,7 @@ API
 
 Manager
 -------
-.. module:: flask_resteasy.views
+.. module:: flask_resteasy.manager
 
 .. autoclass:: APIManager
     :members:

@@ -141,7 +141,7 @@ class TestAPI(unittest.TestCase):
         order_1 = TestAPI.Order(order_no=1, client=author)
         order_item_1 = TestAPI.OrderItem(order=order_1, product=fish, amount=1)
         order_item_2 = TestAPI.OrderItem(order=order_1, product=lettuce,
-                                         amount=1)
+                                         amount=2)
         db.session.add_all([order_1, order_item_1, order_item_2])
 
         order_2 = TestAPI.Order(order_no=1, client=marvin)
@@ -240,6 +240,8 @@ class TestFilter(TestAPI):
         api_manager.register_api(TestAPI.Client,
                                  excludes={'all': ['private']})
         api_manager.register_api(TestAPI.Product)
+        api_manager.register_api(TestAPI.Order)
+        api_manager.register_api(TestAPI.OrderItem)
 
     def test_filter(self):
         with self.client as c:
@@ -258,6 +260,16 @@ class TestFilter(TestAPI):
             j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue(len(j) == 1)
             self.assertTrue(j['products'][0]['sku'] == 'LPERCH')
+
+    def test_filter_link(self):
+        with self.client as c:
+            rv = c.get(self.get_url('/orders/1/links/order_items'),
+                       headers=self.get_headers(),
+                       query_string={'filter': 'amount:2'})
+            self.assertTrue(rv.status_code == 200)
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
+            self.assertTrue(j['order_items'][0]['amount'] == 2)
+            self.assertTrue(len(j) == 1)
 
     def test_filter_unknown(self):
         with self.client as c:
@@ -281,6 +293,8 @@ class TestSort(TestAPI):
         api_manager.register_api(TestAPI.Client,
                                  excludes={'all': ['private']})
         api_manager.register_api(TestAPI.Product)
+        api_manager.register_api(TestAPI.Order)
+        api_manager.register_api(TestAPI.OrderItem)
 
     def test_sort(self):
         with self.client as c:
@@ -308,6 +322,16 @@ class TestSort(TestAPI):
             j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue(j['clients'][0]['email'] == 'marvin@hh.net')
             self.assertTrue(j['clients'][2]['email'] == 'arthur@hh.net')
+
+    def test_sort_link(self):
+        with self.client as c:
+            rv = c.get(self.get_url('/orders/1/links/order_items'),
+                       headers=self.get_headers(),
+                       query_string={'sort': '-amount'})
+            self.assertTrue(rv.status_code == 200)
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
+            self.assertTrue(j['order_items'][0]['amount'] == 2)
+            self.assertTrue(j['order_items'][1]['amount'] == 1)
 
     def test_sort_unknown(self):
         with self.client as c:
@@ -352,6 +376,15 @@ class TestInclude(TestAPI):
             self.assertTrue(len(j['linked']['order_items']) == 2)
             self.assertTrue(len(j['linked']['clients']) == 1)
 
+    def test_include_link(self):
+        with self.client as c:
+            rv = c.get(self.get_url('/orders/1/links/order_items'),
+                       headers=self.get_headers(),
+                       query_string={'include': 'product'})
+            self.assertTrue(rv.status_code == 200)
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
+            self.assertTrue(len(j['linked']['products']) == 1)
+
     def test_include_unknown(self):
         with self.client as c:
             rv = c.get(self.get_url('/orders/1'), headers=self.get_headers(),
@@ -372,6 +405,7 @@ class TestPagination(TestAPI):
         super(TestPagination, cls).setUpClass()
         api_manager = APIManager(app, db)
         api_manager.register_api(TestAPI.Order)
+        api_manager.register_api(TestAPI.OrderItem)
 
     def test_pagination(self):
         with self.client as c:
@@ -392,6 +426,31 @@ class TestPagination(TestAPI):
             self.assertTrue(len(j['orders']) == 1)
 
             rv = c.get(self.get_url('/orders'), headers=self.get_headers(),
+                       query_string={'page': 3, 'per_page': 1})
+            self.assertTrue(rv.status_code == 404)
+
+    def test_pagination_link(self):
+        with self.client as c:
+            rv = c.get(self.get_url('/orders/1/links/order_items'),
+                       headers=self.get_headers(),
+                       query_string={'page': 1, 'per_page': 1})
+            self.assertTrue(rv.status_code == 200)
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
+            self.assertTrue(j['meta']['page'] == 1)
+            self.assertTrue(j['meta']['no_pages'] == 2)
+            self.assertTrue(len(j['order_items']) == 1)
+
+            rv = c.get(self.get_url('/orders/1/links/order_items'),
+                       headers=self.get_headers(),
+                       query_string={'page': 2, 'per_page': 1})
+            self.assertTrue(rv.status_code == 200)
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
+            self.assertTrue(j['meta']['page'] == 2)
+            self.assertTrue(j['meta']['no_pages'] == 2)
+            self.assertTrue(len(j['order_items']) == 1)
+
+            rv = c.get(self.get_url('/orders/1/link/order_items'),
+                       headers=self.get_headers(),
                        query_string={'page': 3, 'per_page': 1})
             self.assertTrue(rv.status_code == 404)
 
