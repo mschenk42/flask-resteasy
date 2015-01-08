@@ -350,7 +350,7 @@ class TestInclude(TestAPI):
             self.assertTrue(rv.status_code == 200)
             j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue(len(j['linked']['order_items']) == 2)
-            self.assertTrue(len(j['linked']['client']) == 1)
+            self.assertTrue(len(j['linked']['clients']) == 1)
 
     def test_include_unknown(self):
         with self.client as c:
@@ -423,12 +423,15 @@ class TestPostRequest(TestAPI):
             self.assertTrue(rv.status_code == 201)
             j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue(j['product']['sku'] == "BEET")
+            self.assertTrue(j['product']['links']['product_category'] == 2)
             self.assertTrue(('Location',
                              self.get_url('/products/3')) == rv.headers[2])
 
         with self.client as c:
             rv = c.get(self.get_url('/products/3'), headers=self.get_headers())
             self.assertTrue(rv.status_code == 200)
+            self.assertTrue(j['product']['sku'] == "BEET")
+            self.assertTrue(j['product']['links']['product_category'] == 2)
 
 
 class TestDeleteRequest(TestAPI):
@@ -462,12 +465,13 @@ class TestPutRequest(TestAPI):
                                  methods=['GET', 'POST', 'PUT', 'DELETE'])
         api_manager.register_api(TestAPI.ProductCategory)
 
-    def test_post(self):
+    def test_put(self):
         p_json = {
             "product": {
                 "sku": "RLETTUCE",
                 "name": 'Red Lettuce',
                 "description": "Red lettuce grown locally",
+                "links": {'product_category': 1},
                 }
         }
 
@@ -477,12 +481,14 @@ class TestPutRequest(TestAPI):
             self.assertTrue(rv.status_code == 200)
             j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue(j['product']['sku'] == "RLETTUCE")
+            self.assertTrue(j['product']['links']['product_category'] == 1)
 
         with self.client as c:
             rv = c.get(self.get_url('/products/2'), headers=self.get_headers())
             self.assertTrue(rv.status_code == 200)
             j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue(j['product']['sku'] == "RLETTUCE")
+            self.assertTrue(j['product']['links']['product_category'] == 1)
 
 
 class TestAllowedRequestMethods(TestAPI):
@@ -525,7 +531,10 @@ class TestEmberConfig(TestAPI):
     @classmethod
     def setUpClass(cls):
         super(TestEmberConfig, cls).setUpClass()
-        api_manager = APIManager(app, db, cfg_class=EmberConfig)
+        api_manager = APIManager(app, db, cfg_class=EmberConfig,
+                                 methods=['GET', 'POST', 'PUT', 'DELETE'])
+        api_manager.register_api(TestAPI.Product)
+        api_manager.register_api(TestAPI.ProductCategory)
         api_manager.register_api(TestAPI.Order)
         api_manager.register_api(TestAPI.OrderItem)
         api_manager.register_api(TestAPI.Client)
@@ -548,3 +557,74 @@ class TestEmberConfig(TestAPI):
             self.assertTrue(rv.status_code == 200)
             j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue('fullName' in j['client'])
+
+    def test_post(self):
+        p_json = {
+            "product": {
+                "sku": "BEET",
+                "name": 'Beets',
+                "description": "Locally produced beets",
+                "price": 1.95,
+                "productCategory": 2,
+                }
+        }
+
+        with self.client as c:
+            rv = c.post(self.get_url('/products'), data=json.dumps(p_json),
+                        headers=self.get_headers())
+            self.assertTrue(rv.status_code == 201)
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
+            self.assertTrue(j['product']['sku'] == "BEET")
+            self.assertTrue(j['product']['productCategory'] == 2)
+            self.assertTrue(('Location',
+                             self.get_url('/products/3')) == rv.headers[2])
+
+        with self.client as c:
+            rv = c.get(self.get_url('/products/3'), headers=self.get_headers())
+            self.assertTrue(rv.status_code == 200)
+
+    def test_put(self):
+        p_json = {
+            "product": {
+                "sku": "BEET",
+                "name": 'Beets',
+                "description": "Locally produced beets",
+                "price": 1.95,
+                "productCategory": 1,
+                }
+        }
+
+        with self.client as c:
+            rv = c.put(self.get_url('/products/1'), data=json.dumps(p_json),
+                       headers=self.get_headers())
+            self.assertTrue(rv.status_code == 200)
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
+            self.assertTrue(j['product']['sku'] == "BEET")
+            self.assertTrue(j['product']['productCategory'] == 1)
+
+        with self.client as c:
+            rv = c.get(self.get_url('/products/1'), headers=self.get_headers())
+            self.assertTrue(rv.status_code == 200)
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
+            self.assertTrue(j['product']['sku'] == "BEET")
+            self.assertTrue(j['product']['productCategory'] == 1)
+
+    def test_delete(self):
+
+        with self.client as c:
+            rv = c.delete(self.get_url('/productCategories/1'),
+                          headers=self.get_headers())
+            self.assertTrue(rv.status_code == 200)
+
+        with self.client as c:
+            rv = c.get(self.get_url('/productCategory/1'),
+                       headers=self.get_headers())
+            self.assertTrue(rv.status_code == 404)
+
+    def test_include(self):
+        with self.client as c:
+            rv = c.get(self.get_url('/orders/1'), headers=self.get_headers(),
+                       query_string={'include': 'orderItems'})
+            self.assertTrue(rv.status_code == 200)
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
+            self.assertTrue(len(j['orderItems']) == 2)

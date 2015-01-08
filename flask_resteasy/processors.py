@@ -111,7 +111,8 @@ class RequestProcessor(object):
             raise UnableToProcess('Not found', 404)
         return rv
 
-    def _get_or_404(self, ident, model_class):
+    @staticmethod
+    def _get_or_404(ident, model_class):
         rv = model_class.query.get(ident)
         if rv is None:
             raise UnableToProcess('Not found', 404)
@@ -164,9 +165,9 @@ class RequestProcessor(object):
                         # I think you can only use append and not extend for
                         # this type of relationship
                         # write a test for this condition
-                        getattr(model, j_key).extend(lst)
+                        getattr(model, rel).extend(lst)
                     else:
-                        setattr(model, j_key, self._get_or_404(link_ids,
+                        setattr(model, rel, self._get_or_404(link_ids,
                                 self._cfg.api_manager.get_model(
                                     self._cfg.resource_name_case(j_key))))
 
@@ -232,14 +233,16 @@ class GetRequestProcessor(RequestProcessor):
                     self._set_include(resources, include)
 
     def _set_include(self, resc, inc):
+        # include nodes are always plural
+        inc_key = pluralize(inc)
         if inc not in self._links:
-            self._links[inc] = []
+            self._links[inc_key] = []
         # todo should we check for duplicates here and
         # remove from builder process?
         # todo if inc is a list will it get loaded by calling
         # getattr, do we need to limit here what loads or handle
         # this in the builder process?
-        self._links[inc].append(getattr(resc, inc))
+        self._links[inc_key].append(getattr(resc, inc))
 
 
 class DeleteRequestProcessor(RequestProcessor):
