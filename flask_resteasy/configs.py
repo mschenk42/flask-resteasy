@@ -16,6 +16,14 @@ from flask_resteasy.factories import ParserFactory
 from flask_resteasy.factories import ProcessorFactory
 from flask_resteasy.factories import BuilderFactory
 
+EXCLUDES = {'to_model',
+            'from_model',
+            'relationship',
+            'sort',
+            'filter',
+            'include',
+            'all'}
+
 
 class APIConfig(object):
     """The default configuration class used when registering API endpoints.
@@ -90,12 +98,6 @@ class APIConfig(object):
         """:class:`flask.ext.sqlalchemy.Model` registered for the endpoint
         """
         return self._model
-
-    @property
-    def app(self):
-        """:class:`flask.Flask` application instance
-        """
-        return current_app
 
     @property
     def db(self):
@@ -408,13 +410,20 @@ class APIConfig(object):
         return self._allowed_include
 
     def _get_excludes_for(self, key):
+        assert key in EXCLUDES, 'Exclude [%s] is not valid' % key
         if self._excludes is not None and key in self._excludes:
-            return (set(self._excludes[key]) |
-                    self._get_excludes_for_all() |
-                    self.api_manager.get_excludes_for(key))
+            # we can only check excludes that are not 'all' and are assigned
+            # directly to this model
+            assert key == 'all' or set(self._excludes[key]) <= (
+                self._get_relationships() | self._get_fields()), \
+                'Invalid excluded field or relationship'
+            rv = (set(self._excludes[key]) |
+                  self._get_excludes_for_all() |
+                  self.api_manager.get_excludes_for(key))
         else:
-            return (self._get_excludes_for_all() |
-                    self.api_manager.get_excludes_for(key))
+            rv = (self._get_excludes_for_all() |
+                  self.api_manager.get_excludes_for(key))
+        return rv
 
     def _get_excludes_for_all(self):
         if self._excludes_for_all is None:

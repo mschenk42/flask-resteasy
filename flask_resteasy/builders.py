@@ -6,8 +6,6 @@
 """
 from flask import request
 
-from flask_resteasy.errors import UnableToProcess
-
 
 class ResponseBuilder(object):
     """Builds the JSON dictionary that is returned as a JSON response
@@ -48,13 +46,9 @@ class ResponseBuilder(object):
                     json_dic[self._processor.resource_name].append(
                         self._resource_to_jdic(resource))
             else:
-                # there should only be one resource object
-                if num_resc == 1:
-                    json_dic[self._processor.resource_name] = \
-                        self._resource_to_jdic(self._processor.resources[0])
-                else:
-                    # This should never happen, we have more than we expected
-                    raise UnableToProcess('Unexpected number of results', 500)
+                assert num_resc == 1, 'Unexpected number of results'
+                json_dic[self._processor.resource_name] = \
+                    self._resource_to_jdic(self._processor.resources[0])
 
             self._build_includes(json_dic)
             self._build_pagination(json_dic)
