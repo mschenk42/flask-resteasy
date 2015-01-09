@@ -228,16 +228,13 @@ class GetRequestProcessor(RequestProcessor):
         # todo - what if includes are large collections?
         if self._parser.include:
             for include in self._parser.include:
-                if isinstance(resources, list):
-                    for resource in resources:
-                        self._set_include(resource, include)
-                else:
-                    self._set_include(resources, include)
+                for resource in resources:
+                    self._set_include(resource, include)
 
     def _set_include(self, resc, inc):
         # include nodes are always plural
         inc_key = pluralize(inc)
-        if inc not in self._links:
+        if inc_key not in self._links:
             self._links[inc_key] = []
         # todo should we check for duplicates here and
         # remove from builder process?

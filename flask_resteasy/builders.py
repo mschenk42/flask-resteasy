@@ -35,30 +35,32 @@ class ResponseBuilder(object):
         """Builds the json dictionary to be used for creating the
         json response.
         """
-        json_dic = {}
+        num_resc = len(self._processor.resources)
+        if num_resc > 0:
+            json_dic = {self._processor.resource_name: []}
+            if self._processor.render_as_list:
+                # What with the render_as_list property?
+                # Why don't we just render as a list if there is more than
+                # one item? Because the client may expect a list even if there
+                # is only one item. This is determined by the processor.  See
+                # GetRequestProcessor.
+                for resource in self._processor.resources:
+                    json_dic[self._processor.resource_name].append(
+                        self._resource_to_jdic(resource))
+            else:
+                # there should only be one resource object
+                if num_resc == 1:
+                    json_dic[self._processor.resource_name] = \
+                        self._resource_to_jdic(self._processor.resources[0])
+                else:
+                    # This should never happen, we have more than we expected
+                    raise UnableToProcess('Unexpected number of results', 500)
 
-        # Build the json dict for the resource objects
-        if self._processor.render_as_list:
-            # What with the render_as_list property?
-            # Why don't we just render as a list if there is more than
-            # one item? Because the client may expect a list even if there is
-            # only one item. This is determined by the processor.  See
-            # GetRequestProcessor.
-            json_dic[self._processor.resource_name] = []
-            for resource in self._processor.resources:
-                json_dic[self._processor.resource_name].append(
-                    self._resource_to_jdic(resource))
+            self._build_includes(json_dic)
+            self._build_pagination(json_dic)
         else:
-            no_resc = len(self._processor.resources)
-            if no_resc == 1:
-                json_dic[self._processor.resource_name] = \
-                    self._resource_to_jdic(self._processor.resources[0])
-            elif no_resc > 1:
-                # This should never happen, we have more than we expected
-                raise UnableToProcess('Unexpected number of results', 500)
+            json_dic = {self._processor.resource_name: []}
 
-        self._build_includes(json_dic)
-        self._build_pagination(json_dic)
         self._json_dic = json_dic
 
     def _resource_to_jdic(self, resource):
@@ -74,15 +76,14 @@ class ResponseBuilder(object):
         """
         rv = {}
         convert = self._cfg.model_to_json_type_converters
-        if resource is not None:
-            for field_name in self._cfg.allowed_from_model:
-                fld_jkey = self._cfg.json_case(field_name)
-                v = getattr(resource, field_name)
-                current_type = self._cfg.field_types[field_name]
-                if current_type in convert and v is not None:
-                    rv[fld_jkey] = convert[current_type](v)
-                else:
-                    rv[fld_jkey] = v
+        for field_name in self._cfg.allowed_from_model:
+            fld_jkey = self._cfg.json_case(field_name)
+            v = getattr(resource, field_name)
+            current_type = self._cfg.field_types[field_name]
+            if current_type in convert and v is not None:
+                rv[fld_jkey] = convert[current_type](v)
+            else:
+                rv[fld_jkey] = v
         return rv
 
     def _links_to_jdic(self, resource):
@@ -90,24 +91,23 @@ class ResponseBuilder(object):
         to the dictionary
         """
         rv = {}
-        if resource is not None:
-            link_names = self._cfg.allowed_relationships
-            rv = {}
-            for link_name in link_names:
-                link_jkey = self._cfg.json_case(link_name)
-                link_obj = getattr(resource, link_name)
-                if isinstance(link_obj, list):
-                    ids = []
-                    for link in link_obj:
-                        ids.append(getattr(link, self._cfg.id_field))
-                    self._set_link_jnode(rv, link_jkey, ids)
+        link_names = self._cfg.allowed_relationships
+        rv = {}
+        for link_name in link_names:
+            link_jkey = self._cfg.json_case(link_name)
+            link_obj = getattr(resource, link_name)
+            if isinstance(link_obj, list):
+                ids = []
+                for link in link_obj:
+                    ids.append(getattr(link, self._cfg.id_field))
+                self._set_link_jnode(rv, link_jkey, ids)
+            else:
+                if link_obj is not None:
+                    self._set_link_jnode(
+                        rv, link_jkey,
+                        getattr(link_obj, self._cfg.id_field))
                 else:
-                    if link_obj is not None:
-                        self._set_link_jnode(
-                            rv, link_jkey,
-                            getattr(link_obj, self._cfg.id_field))
-                    else:
-                        self._set_link_jnode(rv, link_jkey, None)
+                    self._set_link_jnode(rv, link_jkey, None)
         return rv
 
     def _set_link_jnode(self, dic, link_jkey, link):

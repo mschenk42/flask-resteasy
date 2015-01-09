@@ -59,6 +59,9 @@ class APIConfig(object):
     """
     def __init__(self, model_class, excludes, max_per_page):
         self._model = model_class
+        # todo should we validate the exclude keys and values?
+        # yes, we need to validate the keys and the value is a list and
+        # where possible validate the items in the list
         self._excludes = excludes
         self._max_per_page = max_per_page
 

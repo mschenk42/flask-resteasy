@@ -177,6 +177,8 @@ class TestGetRequest(TestAPI):
                                  excludes={'all': ['private']})
         api_manager.register_api(TestAPI.ProductCategory)
         api_manager.register_api(TestAPI.Product)
+        api_manager.register_api(TestAPI.Order,
+                                 excludes={'relationship': ['client']})
 
     def test_get_all(self):
         with self.client as c:
@@ -222,6 +224,30 @@ class TestGetRequest(TestAPI):
             self.assertTrue(rv.status_code == 200)
             j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue(isinstance(j['product_category'], dict))
+
+    def test_get_link_unknown(self):
+        with self.client as c:
+            rv = c.get(self.get_url('/products/1/links/unkown'),
+                       headers=self.get_headers())
+            self.assertTrue(rv.status_code == 400)
+
+    def test_get_link_unauthorized(self):
+        with self.client as c:
+            rv = c.get(self.get_url('/orders/1/links/client'),
+                       headers=self.get_headers())
+            self.assertTrue(rv.status_code == 403)
+
+    def test_get_link_no_id(self):
+        with self.client as c:
+            rv = c.get(self.get_url('/products/links/product_category'),
+                       headers=self.get_headers())
+            self.assertTrue(rv.status_code == 404)
+
+    def test_get_invalid_ids(self):
+        with self.client as c:
+            rv = c.get(self.get_url('/products/1,a'),
+                       headers=self.get_headers())
+            self.assertTrue(rv.status_code == 400)
 
     def test_get_private(self):
         with self.client as c:
@@ -283,15 +309,36 @@ class TestFilter(TestAPI):
                        query_string={'filter': 'private:sensitive data'})
             self.assertTrue(rv.status_code == 403)
 
+    def test_filter_invalid(self):
+        with self.client as c:
+            rv = c.get(self.get_url('/clients'), headers=self.get_headers(),
+                       query_string={'filter': ''})
+            self.assertTrue(rv.status_code == 400)
+
+            rv = c.get(self.get_url('/clients'), headers=self.get_headers(),
+                       query_string={'filter': 'amount'})
+            self.assertTrue(rv.status_code == 400)
+
+            rv = c.get(self.get_url('/clients'), headers=self.get_headers(),
+                       query_string={'filter': 'amount:'})
+            self.assertTrue(rv.status_code == 400)
+
+    def test_filter_empty_results(self):
+        with self.client as c:
+            rv = c.get(self.get_url('/clients'), headers=self.get_headers(),
+                       query_string={'filter': 'email:doesnotexist'})
+            self.assertTrue(rv.status_code == 200)
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
+            self.assertTrue(len(j['clients']) == 0)
+
 
 class TestSort(TestAPI):
 
     @classmethod
     def setUpClass(cls):
         super(TestSort, cls).setUpClass()
-        api_manager = APIManager(app, db)
-        api_manager.register_api(TestAPI.Client,
-                                 excludes={'all': ['private']})
+        api_manager = APIManager(app, db, excludes={'all': ['private']})
+        api_manager.register_api(TestAPI.Client)
         api_manager.register_api(TestAPI.Product)
         api_manager.register_api(TestAPI.Order)
         api_manager.register_api(TestAPI.OrderItem)
@@ -345,18 +392,24 @@ class TestSort(TestAPI):
                        query_string={'sort': 'private'})
             self.assertTrue(rv.status_code == 403)
 
+    def test_sort_invalid(self):
+        with self.client as c:
+            rv = c.get(self.get_url('/clients'), headers=self.get_headers(),
+                       query_string={'sort': ''})
+            self.assertTrue(rv.status_code == 400)
+
 
 class TestInclude(TestAPI):
 
     @classmethod
     def setUpClass(cls):
         super(TestInclude, cls).setUpClass()
-        api_manager = APIManager(app, db)
+        api_manager = APIManager(app, db,
+                                 excludes={'include': ['product_category']})
         api_manager.register_api(TestAPI.Order)
         api_manager.register_api(TestAPI.OrderItem)
         api_manager.register_api(TestAPI.Client)
-        api_manager.register_api(TestAPI.Product,
-                                 excludes={'all': ['product_category']})
+        api_manager.register_api(TestAPI.Product)
         api_manager.register_api(TestAPI.ProductCategory)
 
     def test_include(self):
@@ -366,6 +419,20 @@ class TestInclude(TestAPI):
             self.assertTrue(rv.status_code == 200)
             j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue(len(j['linked']['order_items']) == 2)
+
+        with self.client as c:
+            rv = c.get(self.get_url('/orders'), headers=self.get_headers(),
+                       query_string={'include': 'order_items'})
+            self.assertTrue(rv.status_code == 200)
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
+            self.assertTrue(len(j['linked']['order_items']) == 3)
+
+        with self.client as c:
+            rv = c.get(self.get_url('/orders'), headers=self.get_headers(),
+                       query_string={'include': 'client'})
+            self.assertTrue(rv.status_code == 200)
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
+            self.assertTrue(len(j['linked']['clients']) == 2)
 
     def test_include_many(self):
         with self.client as c:
@@ -383,7 +450,7 @@ class TestInclude(TestAPI):
                        query_string={'include': 'product'})
             self.assertTrue(rv.status_code == 200)
             j = json.loads(rv.data.decode(encoding='UTF-8'))
-            self.assertTrue(len(j['linked']['products']) == 1)
+            self.assertTrue(len(j['linked']['products']) == 2)
 
     def test_include_unknown(self):
         with self.client as c:
@@ -396,6 +463,12 @@ class TestInclude(TestAPI):
             rv = c.get(self.get_url('/products/1'), headers=self.get_headers(),
                        query_string={'include': 'product_category'})
             self.assertTrue(rv.status_code == 403)
+
+    def test_include_invalid(self):
+        with self.client as c:
+            rv = c.get(self.get_url('/products/1'), headers=self.get_headers(),
+                       query_string={'include': ''})
+            self.assertTrue(rv.status_code == 400)
 
 
 class TestPagination(TestAPI):
@@ -454,6 +527,16 @@ class TestPagination(TestAPI):
                        query_string={'page': 3, 'per_page': 1})
             self.assertTrue(rv.status_code == 404)
 
+    def test_pagination_invalid(self):
+        with self.client as c:
+            rv = c.get(self.get_url('/orders'), headers=self.get_headers(),
+                       query_string={'page': 'a', 'per_page': 1})
+            self.assertTrue(rv.status_code == 400)
+
+            rv = c.get(self.get_url('/orders'), headers=self.get_headers(),
+                       query_string={'page': 1, 'per_page': 'a'})
+            self.assertTrue(rv.status_code == 400)
+
 
 class TestPostRequest(TestAPI):
 
@@ -464,8 +547,11 @@ class TestPostRequest(TestAPI):
         api_manager.register_api(TestAPI.Product,
                                  methods=['GET', 'POST', 'PUT', 'DELETE'])
         api_manager.register_api(TestAPI.ProductCategory)
+        api_manager.register_api(TestAPI.Order, methods=['GET', 'POST'])
+        api_manager.register_api(TestAPI.OrderItem)
+        api_manager.register_api(TestAPI.Client)
 
-    def test_post(self):
+    def test_post_one_to_one(self):
         p_json = {
             "product": {
                 "sku": "BEET",
@@ -492,6 +578,30 @@ class TestPostRequest(TestAPI):
             self.assertTrue(j['product']['sku'] == "BEET")
             self.assertTrue(j['product']['links']['product_category'] == 2)
 
+    def test_post_one_to_many(self):
+        p_json = {
+            "order": {
+                "order_no": "3",
+                "links": {'order_items': [1], 'client': None},
+                }
+        }
+
+        with self.client as c:
+            rv = c.post(self.get_url('/orders'), data=json.dumps(p_json),
+                        headers=self.get_headers())
+            self.assertTrue(rv.status_code == 201)
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
+            self.assertTrue(j['order']['order_no'] == "3")
+            self.assertTrue(j['order']['links']['order_items'] == [1])
+            self.assertTrue(('Location',
+                             self.get_url('/orders/3')) == rv.headers[2])
+
+        with self.client as c:
+            rv = c.get(self.get_url('/orders/3'), headers=self.get_headers())
+            self.assertTrue(rv.status_code == 200)
+            self.assertTrue(j['order']['order_no'] == "3")
+            self.assertTrue(j['order']['links']['order_items'] == [1])
+
 
 class TestDeleteRequest(TestAPI):
 
@@ -510,7 +620,8 @@ class TestDeleteRequest(TestAPI):
             self.assertTrue(rv.status_code == 200)
 
         with self.client as c:
-            rv = c.get(self.get_url('/products/1'), headers=self.get_headers())
+            rv = c.delete(self.get_url('/products/1'),
+                          headers=self.get_headers())
             self.assertTrue(rv.status_code == 404)
 
 

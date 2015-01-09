@@ -184,10 +184,7 @@ class RequestParser(object):
 
         # store as passed in on url, do not convert case
         self._link = link
-        if len(self._idents) == 0:
-            # No ids for a link route
-            raise UnableToProcess('No IDs provided for link route')
-        elif self._cfg.model_case(self._link) not in self._cfg.relationships:
+        if self._cfg.model_case(self._link) not in self._cfg.relationships:
             # Link does not match any known relationships
             raise UnableToProcess('Link route is not valid')
         elif self._cfg.model_case(self._link) not in \
@@ -209,7 +206,7 @@ class RequestParser(object):
             cfg = current_app.api_manager.get_cfg(link_resc)
 
         if len(filter_str) == 0:
-            return
+            raise UnableToProcess('Filter is blank')
         else:
             self._filter = {}
             filters = filter_str.split(self.qp_key_pairs_del)
@@ -244,7 +241,7 @@ class RequestParser(object):
             cfg = current_app.api_manager.get_cfg(link_resc)
 
         if len(sort_str) == 0:
-            return
+            raise UnableToProcess('Sort is blank')
         else:
             self._sort = {}
             sorts = sort_str.split(self.qp_key_pairs_del)
@@ -281,7 +278,7 @@ class RequestParser(object):
             cfg = current_app.api_manager.get_cfg(link_resc)
 
         if len(include_str) == 0:
-            return
+            raise UnableToProcess('Include is blank')
         else:
             self._include = set()
             includes = include_str.split(self.qp_key_pairs_del)
