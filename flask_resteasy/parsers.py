@@ -175,7 +175,8 @@ class RequestParser(object):
             try:
                 int(i)
             except ValueError:
-                raise UnableToProcess('IDs [%s] are invalid' % idents)
+                raise UnableToProcess('Route ID Error',
+                                      'IDs [%s] are invalid' % idents)
 
     def _parse_link(self, kwargs):
         link = kwargs.get(self._cfg.link_route_param, None)
@@ -186,11 +187,14 @@ class RequestParser(object):
         self._link = link
         if self._cfg.model_case(self._link) not in self._cfg.relationships:
             # Link does not match any known relationships
-            raise UnableToProcess('Link route is not valid')
+            raise UnableToProcess('Route Link Error',
+                                  'Link route [%s] is not valid' % self._link)
         elif self._cfg.model_case(self._link) not in \
                 self._cfg.allowed_relationships:
             # Valid link name but it's not allowed
-            raise UnableToProcess('Link route not allowed', 403)
+            raise UnableToProcess('Route Link Error',
+                                  'Link route [%s] not allowed' % self._link,
+                                  403)
 
     def _parse_filter(self):
         filter_str = request.args.get(self.filter_qp, None)
@@ -206,7 +210,7 @@ class RequestParser(object):
             cfg = current_app.api_manager.get_cfg(link_resc)
 
         if len(filter_str) == 0:
-            raise UnableToProcess('Filter is blank')
+            raise UnableToProcess('Filter Error', 'Filter is blank')
         else:
             self._filter = {}
             filters = filter_str.split(self.qp_key_pairs_del)
@@ -214,17 +218,20 @@ class RequestParser(object):
                 filter_pair = f.split(self.qp_key_val_del)
                 if len(filter_pair) != 2:
                     # Not a valid filter pair
-                    raise UnableToProcess('Filter [%s] is invalid' % f)
+                    raise UnableToProcess('Filter Error',
+                                          'Filter [%s] is invalid' % f)
                 filter_key = cfg.model_case(filter_pair[0])
                 if filter_key in cfg.allowed_filter:
                     self._filter[filter_key] = filter_pair[1]
                 else:
                     if filter_key not in cfg.fields:
                         # Filter key is not a known field
-                        raise UnableToProcess('Filter field [%s] is unknown'
+                        raise UnableToProcess('Filter Error',
+                                              'Filter field [%s] is unknown'
                                               % filter_key)
                     else:
-                        raise UnableToProcess('Filter field [%s] not allowed'
+                        raise UnableToProcess('Filter Error',
+                                              'Filter field [%s] not allowed'
                                               % filter_key, 403)
 
     def _parse_sort(self):
@@ -241,7 +248,7 @@ class RequestParser(object):
             cfg = current_app.api_manager.get_cfg(link_resc)
 
         if len(sort_str) == 0:
-            raise UnableToProcess('Sort is blank')
+            raise UnableToProcess('Sort Error', 'Sort is blank')
         else:
             self._sort = {}
             sorts = sort_str.split(self.qp_key_pairs_del)
@@ -258,10 +265,12 @@ class RequestParser(object):
                 else:
                     if fld not in cfg.fields:
                         # Unknown sort field
-                        raise UnableToProcess('Sort field [%s] unknown' % fld)
+                        raise UnableToProcess('Sort Error',
+                                              'Sort field [%s] unknown' % fld)
                     else:
                         # Sort field not allowed
-                        raise UnableToProcess('Sort field [%s] not allowed'
+                        raise UnableToProcess('Sort Error',
+                                              'Sort field [%s] not allowed'
                                               % fld, 403)
 
     def _parse_include(self):
@@ -278,7 +287,7 @@ class RequestParser(object):
             cfg = current_app.api_manager.get_cfg(link_resc)
 
         if len(include_str) == 0:
-            raise UnableToProcess('Include is blank')
+            raise UnableToProcess('Include Error', 'Include is blank')
         else:
             self._include = set()
             includes = include_str.split(self.qp_key_pairs_del)
@@ -289,10 +298,12 @@ class RequestParser(object):
                 else:
                     if i not in cfg.relationships:
                         # Unknown relationship name for include
-                        raise UnableToProcess('Include name [%s] unknown' % i)
+                        raise UnableToProcess('Include Error',
+                                              'Include name [%s] unknown' % i)
                     else:
                         # Relationship name not allowed for include
-                        raise UnableToProcess('Include name [%s] not allowed'
+                        raise UnableToProcess('Include Error',
+                                              'Include name [%s] not allowed'
                                               % i, 403)
 
     def _parse_pagination(self):
@@ -306,13 +317,15 @@ class RequestParser(object):
             try:
                 self._page = int(page)
             except ValueError:
-                raise UnableToProcess('Page number [%s] is not integer' % page)
+                raise UnableToProcess('Pagination Error',
+                                      'Page number [%s] is not integer' % page)
 
         if per_page:
             try:
                 self._per_page = int(per_page)
             except ValueError:
-                raise UnableToProcess('Per Page number [%s] is not integer'
+                raise UnableToProcess('Pagination Error',
+                                      'Per Page number [%s] is not integer'
                                       % per_page)
 
 

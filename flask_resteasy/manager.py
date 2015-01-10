@@ -128,7 +128,8 @@ class APIManager(object):
         :param resource_name: name of resource
         """
         if resource_name not in self._cfg_for_resources:
-            raise UnableToProcess('Resource [%s] not found' % resource_name)
+            raise UnableToProcess('Resource Error',
+                                  'Resource [%s] not found' % resource_name)
         return self._cfg_for_resources[resource_name]
 
     def get_model(self, resource_name):
@@ -138,7 +139,8 @@ class APIManager(object):
         :param resource_name: name of resource
         """
         if resource_name not in self._model_for_resources:
-            raise UnableToProcess('Resource [%s] not found' % resource_name)
+            raise UnableToProcess('Resource Error',
+                                  'Resource [%s] not found' % resource_name)
         return self._model_for_resources[resource_name]
 
     def _register_cfg(self, cfg, resource_singular, resource_plural):
