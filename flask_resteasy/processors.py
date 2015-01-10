@@ -385,7 +385,13 @@ class Pager(object):
         return self.client_requested or self.no_pages > 1
 
     def _paginate(self):
-        pagination = self._query.paginate(self._page, self._per_page)
+        pagination = self._query.paginate(self._page, self._per_page,
+                                          error_out=False)
         self._no_pages = pagination.pages
         self._items = pagination.items
         self._total_items = pagination.total
+        if not self._items and self._page > 1:
+            raise UnableToProcess('Not Found',
+                                  'Page [%s] does not exist for paginated '
+                                  'request' % self._page,
+                                  404)

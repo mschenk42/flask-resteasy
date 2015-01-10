@@ -33,9 +33,9 @@ class ResponseBuilder(object):
         """Builds the json dictionary to be used for creating the
         json response.
         """
+        json_dic = {self._processor.resource_name: []}
         num_resc = len(self._processor.resources)
         if num_resc > 0:
-            json_dic = {self._processor.resource_name: []}
             if self._processor.render_as_list:
                 # What with the render_as_list property?
                 # Why don't we just render as a list if there is more than
@@ -52,8 +52,6 @@ class ResponseBuilder(object):
 
             self._build_includes(json_dic)
             self._build_pagination(json_dic)
-        else:
-            json_dic = {self._processor.resource_name: []}
 
         self._json_dic = json_dic
 
