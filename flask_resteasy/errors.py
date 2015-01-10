@@ -13,9 +13,10 @@ class UnableToProcess(Exception):
     """
     status_code = 400
 
-    def __init__(self, message, status_code=None, payload=None):
+    def __init__(self, title, detail, status_code=None, payload=None):
         Exception.__init__(self)
-        self.message = message
+        self.title = title
+        self.detail = detail
         if status_code is not None:
             self.status_code = status_code
         self.payload = payload
@@ -23,9 +24,11 @@ class UnableToProcess(Exception):
     def to_dict(self):
         """Return exception info as a dictionary
         """
-        rv = dict(self.payload or ())
-        rv['message'] = self.message
-        return rv
+        er = {'title': self.title,
+              'detail': self.detail,
+              'status': self.status_code}
+        er.update(self.payload or {})
+        return {'errors': [er]}
 
 
 def handle_errors(error):

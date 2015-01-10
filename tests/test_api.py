@@ -227,7 +227,7 @@ class TestGetRequest(TestAPI):
 
     def test_get_link_unknown(self):
         with self.client as c:
-            rv = c.get(self.get_url('/products/1/links/unkown'),
+            rv = c.get(self.get_url('/products/1/links/unknown'),
                        headers=self.get_headers())
             self.assertTrue(rv.status_code == 400)
 

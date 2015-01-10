@@ -110,14 +110,18 @@ class RequestProcessor(object):
         # if no filter set
         if self._parser.filter is None and join_class is None \
                 and len(idents) != self._pager.total_items:
-            raise UnableToProcess('Not found', 404)
+            raise UnableToProcess('Not found',
+                                  'One or more resources with IDs [%s]'
+                                  'not found' % idents , 404)
         return rv
 
     @staticmethod
     def _get_or_404(ident, model_class):
         rv = model_class.query.get(ident)
         if rv is None:
-            raise UnableToProcess('Not found', 404)
+            raise UnableToProcess('Not found',
+                                  'Resource with ID [%s] not found' % ident,
+                                  404)
         return rv
 
     def _copy(self, obj, flds, fld_defaults=None, model_class=None):
