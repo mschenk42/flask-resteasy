@@ -189,19 +189,12 @@ class RequestParser(object):
             # Link does not match any known relationships
             raise UnableToProcess('Route Link Error',
                                   'Link route [%s] is not valid' % self._link)
-=======
-                                  'Link route is not valid')
->>>>>>> d923b369ef217600d67a1141e3aa54cfe0a38762
         elif self._cfg.model_case(self._link) not in \
                 self._cfg.allowed_relationships:
             # Valid link name but it's not allowed
             raise UnableToProcess('Route Link Error',
-<<<<<<< HEAD
                                   'Link route [%s] not allowed' % self._link,
                                   403)
-=======
-                                  'Link route not allowed', 403)
->>>>>>> d923b369ef217600d67a1141e3aa54cfe0a38762
 
     def _parse_filter(self):
         filter_str = request.args.get(self.filter_qp, None)
