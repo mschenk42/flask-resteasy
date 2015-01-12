@@ -40,6 +40,7 @@ class APIManager(object):
     def __init__(self, app=None, db=None, cfg_class=APIConfig, decorators=None,
                  bp=None, excludes=None, methods=None, max_per_page=20,
                  error_handler=handle_errors):
+        self.app = app
         self._db = db
         self._cfg_class = cfg_class
         self._bp = bp
@@ -85,7 +86,8 @@ class APIManager(object):
 
         :param error_handler: error_handler for UnableToProcess exceptions
         """
-        app.api_manager = self
+        self.app = app
+        self.app.api_manager = self
         self._db = db
         self._cfg_class = cfg_class
         self._excludes = excludes
@@ -231,11 +233,17 @@ class APIManager(object):
 
         # register with blueprint or application?
         if bp is not None:
+            # use blueprint pass into this method
+            has_blueprint = True
             reg_with = bp
         elif self._bp is not None:
+            # use blueprint set on initialization of APIManager
+            has_blueprint = True
             reg_with = self._bp
         else:
-            reg_with = current_app
+            # no blueprint, register on the Flask app instance
+            has_blueprint = False
+            reg_with = self.app
 
         # root resource url, i.e. /products
         url = '/%s' % cfg.resource_name_plural
@@ -271,3 +279,7 @@ class APIManager(object):
                                        cfg.link_route_param),
                                       view_func=view_func,
                                       methods=reg_methods)
+
+        # register blueprint with app
+        if has_blueprint:
+            self.app.register_blueprint(reg_with)

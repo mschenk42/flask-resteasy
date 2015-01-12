@@ -1,7 +1,7 @@
 from distutils.core import setup
 
 setup(
-    name='flask-resteasy',
+    name='Flask-RestEasy',
     version='0.0.1',
     packages=['flask_resteasy'],
     author='Michael Schenk',
