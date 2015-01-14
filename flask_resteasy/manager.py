@@ -4,7 +4,10 @@
     ~~~~~~~~~~~~~~~~~~~~~~
 
 """
-from flask import current_app
+from flask import render_template
+from flask import Blueprint
+
+from inflection import singularize
 
 from flask_resteasy.configs import APIConfig
 from flask_resteasy.views import APIView
@@ -39,8 +42,8 @@ class APIManager(object):
 
     def __init__(self, app=None, db=None, cfg_class=APIConfig, decorators=None,
                  bp=None, excludes=None, methods=None, max_per_page=20,
-                 error_handler=handle_errors):
-        self.app = app
+                 error_handler=None):
+        self._app = app
         self._db = db
         self._cfg_class = cfg_class
         self._bp = bp
@@ -55,7 +58,7 @@ class APIManager(object):
 
     def init_app(self, app, db, cfg_class=APIConfig, decorators=None,
                  bp=None, excludes=None, methods=None, max_per_page=20,
-                 error_handler=handle_errors):
+                 error_handler=None):
         """Stores the :class:`flask.Flask` application object,
         :class:`flask.ext.sqlalchemy.SQLAlchemy` object and any global
         default settings.
@@ -86,8 +89,8 @@ class APIManager(object):
 
         :param error_handler: error_handler for UnableToProcess exceptions
         """
-        self.app = app
-        self.app.api_manager = self
+        self._app = app
+        self._app.api_manager = self
         self._db = db
         self._cfg_class = cfg_class
         self._excludes = excludes
@@ -112,9 +115,22 @@ class APIManager(object):
         # Below is the code that fails with Python 3.
         #
         # if isinstance(e, typecheck):
-        #   return handler(e)
+        # return handler(e)
         #
-        app.register_error_handler(UnableToProcess, error_handler)
+        if error_handler is None:
+            error_handler = handle_errors
+        self._app.register_error_handler(UnableToProcess, error_handler)
+
+        def resteasy_api():
+            """View API information for registered endpoints
+            """
+            return render_template('api_info.html', cfgs=self.configs)
+
+        if self._app.debug:
+            re_bp = Blueprint('resteasy_bp', __name__,
+                              template_folder="templates")
+            re_bp.add_url_rule('/api_info', 'resteasy_api', resteasy_api)
+            self._app.register_blueprint(re_bp)
 
     @property
     def db(self):
@@ -123,12 +139,19 @@ class APIManager(object):
         """
         return self._db
 
+    @property
+    def configs(self):
+        """Dictionary of configurations objects by resource name
+        """
+        return self._cfg_for_resources
+
     def get_cfg(self, resource_name):
         """Returns the :class:`flask_resteasy.configs.APIConfig` for
         a resource.
 
         :param resource_name: name of resource
         """
+        resource_name = singularize(resource_name)
         if resource_name not in self._cfg_for_resources:
             raise UnableToProcess('Resource Error',
                                   'Resource [%s] not found' % resource_name)
@@ -140,18 +163,19 @@ class APIManager(object):
 
         :param resource_name: name of resource
         """
+        resource_name = singularize(resource_name)
         if resource_name not in self._model_for_resources:
             raise UnableToProcess('Resource Error',
                                   'Resource [%s] not found' % resource_name)
         return self._model_for_resources[resource_name]
 
-    def _register_cfg(self, cfg, resource_singular, resource_plural):
-        self._cfg_for_resources[resource_singular] = cfg
-        self._cfg_for_resources[resource_plural] = cfg
+    def _register_cfg(self, cfg, resource_name):
+        resource_name = singularize(resource_name)
+        self._cfg_for_resources[resource_name] = cfg
 
-    def _register_model(self, model_class, resource_singular, resource_plural):
-        self._model_for_resources[resource_singular] = model_class
-        self._model_for_resources[resource_plural] = model_class
+    def _register_model(self, model_class, resource_name):
+        resource_name = singularize(resource_name)
+        self._model_for_resources[resource_name] = model_class
 
     def get_excludes_for(self, key):
         """Returns an exclude list for a specific key.
@@ -225,11 +249,10 @@ class APIManager(object):
         cfg = cfg_class(model_class, excludes, max_per_page)
 
         # register API configuration object by resource name
-        self._register_cfg(cfg, cfg.resource_name, cfg.resource_name_plural)
+        self._register_cfg(cfg, cfg.resource_name)
 
         # register model class by resource name
-        self._register_model(model_class, cfg.resource_name,
-                             cfg.resource_name_plural)
+        self._register_model(model_class, cfg.resource_name)
 
         # register with blueprint or application?
         if bp is not None:
@@ -243,7 +266,7 @@ class APIManager(object):
         else:
             # no blueprint, register on the Flask app instance
             has_blueprint = False
-            reg_with = self.app
+            reg_with = self._app
 
         # root resource url, i.e. /products
         url = '/%s' % cfg.resource_name_plural
@@ -267,12 +290,12 @@ class APIManager(object):
         reg_methods = list({'GET'} & methods)
         if len(reg_methods) > 0:
             if cfg.use_link_nodes:
-                    reg_with.add_url_rule('%s/<%s>/%s/<%s>' %
-                                          (url, cfg.id_route_param,
-                                           cfg.links_node,
-                                           cfg.link_route_param),
-                                          view_func=view_func,
-                                          methods=reg_methods)
+                reg_with.add_url_rule('%s/<%s>/%s/<%s>' %
+                                      (url, cfg.id_route_param,
+                                       cfg.links_node,
+                                       cfg.link_route_param),
+                                      view_func=view_func,
+                                      methods=reg_methods)
             else:
                 reg_with.add_url_rule('%s/<%s>/<%s>' %
                                       (url, cfg.id_route_param,
@@ -282,4 +305,4 @@ class APIManager(object):
 
         # register blueprint with app
         if has_blueprint:
-            self.app.register_blueprint(reg_with)
+            self._app.register_blueprint(reg_with)

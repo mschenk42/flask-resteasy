@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <!-- Basic Page Needs
+    –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+    <meta charset="utf-8">
+    <title>RestEasy API Information</title>
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <!-- Mobile Specific Metas
+    –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- FONT
+    –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+    <link href="//fonts.googleapis.com/css?family=Raleway:400,300,600"
+          rel="stylesheet" type="text/css">
+
+    <!-- CSS
+    –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+    <link rel="stylesheet" href="http://cdnjs.cloudflare.com/ajax/libs/normalize/3.0.2/normalize.min.css">
+    <link rel="stylesheet" href="http://cdnjs.cloudflare.com/ajax/libs/skeleton/2.0.4/skeleton.min.css">
+
+
+</head>
+<body>
+
+<!-- Primary Page Layout
+–––––––––––––––––––––––––––––––––––––––––––––––––– -->
+<div class="container">
+        {% for c in cfgs %}
+            <div class="row">
+            <div class="eight columns">
+                <h1><a>{{ c }}</a></h1>
+            </div>
+            </div>
+            <div class="row">
+            <div class="four columns">
+                <h5><u>JSON Fields</u></h5>
+                <ul>
+                {% for f in cfgs[c].allowed_from_model %}
+                    <li>{{f}}</li>
+                {% endfor %}
+                {% for r in cfgs[c].allowed_relationships %}
+                    <li>{{r}}</li>
+                {% endfor %}
+                </ul>
+            </div>
+            <div class="four columns">
+                <h5><u>Model Fields</u></h5>
+                <ul>
+                    {% for f in cfgs[c].allowed_to_model %}
+                        <li>{{f}}</li>
+                    {% endfor %}
+                    {% for r in cfgs[c].allowed_relationships %}
+                        <li>{{r}}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            </div>
+        {% endfor %}
+</div>
+
+<!-- End Document
+  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+</body>
+</html>

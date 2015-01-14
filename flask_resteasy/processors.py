@@ -112,7 +112,7 @@ class RequestProcessor(object):
                 and len(idents) != self._pager.total_items:
             raise UnableToProcess('Resource Not Found',
                                   'One or more resources with IDs %s '
-                                  'not found' % idents , 404)
+                                  'not found' % idents, 404)
         return rv
 
     @staticmethod

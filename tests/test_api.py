@@ -87,6 +87,7 @@ class TestAPI(unittest.TestCase):
         global app, db
 
         app = Flask(__name__)
+        app.config['DEBUG'] = True
         app.config['TESTING'] = True
         app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
         db.init_app(app)
@@ -661,16 +662,15 @@ class TestPutRequest(TestAPI):
             self.assertTrue(j['product']['links']['product_category'] == 1)
 
 
-class TestAllowedRequestMethods(TestAPI):
+class TestAllowedDefaultRequestMethods(TestAPI):
 
     @classmethod
     def setUpClass(cls):
-        super(TestAllowedRequestMethods, cls).setUpClass()
-
-    def test_default_allowed(self):
+        super(TestAllowedDefaultRequestMethods, cls).setUpClass()
         api_manager = APIManager(app, db)
         api_manager.register_api(TestAPI.Product)
 
+    def test_default_allowed(self):
         with self.client as c:
             rv = c.get(self.get_url('/products'), headers=self.get_headers())
             self.assertTrue(rv.status_code == 200)
@@ -681,10 +681,16 @@ class TestAllowedRequestMethods(TestAPI):
             rv = c.delete(self.get_url('/products/1'))
             self.assertTrue(rv.status_code == 405)
 
-    def test_set_allowed(self):
+
+class TestAllowedRequestMethods(TestAPI):
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestAllowedRequestMethods, cls).setUpClass()
         api_manager = APIManager(app, db)
         api_manager.register_api(TestAPI.Client, methods=['GET', 'DELETE'])
 
+    def test_set_allowed(self):
         with self.client as c:
             rv = c.get(self.get_url('/clients'), headers=self.get_headers())
             self.assertTrue(rv.status_code == 200)
@@ -798,3 +804,21 @@ class TestEmberConfig(TestAPI):
             self.assertTrue(rv.status_code == 200)
             j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue(len(j['orderItems']) == 2)
+
+
+class TestAPIInfo(TestAPI):
+
+    @classmethod
+    def setUpClass(cls):
+        super(TestAPIInfo, cls).setUpClass()
+        api_manager = APIManager(app, db)
+        api_manager.register_api(TestAPI.Client,
+                                 excludes={'all': ['private']})
+        api_manager.register_api(TestAPI.ProductCategory)
+        api_manager.register_api(TestAPI.Product)
+
+    def test_view(self):
+        with self.client as c:
+            rv = c.get(self.get_url('/api_info'),
+                       headers=self.get_headers())
+            self.assertTrue(rv.status_code == 200)

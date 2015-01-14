@@ -84,7 +84,6 @@ class ResponseBuilder(object):
         """
         rv = {}
         link_names = self._cfg.allowed_relationships
-        rv = {}
         for link_name in link_names:
             link_jkey = self._cfg.json_case(link_name)
             link_obj = getattr(resource, link_name)

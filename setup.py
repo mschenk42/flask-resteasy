@@ -4,6 +4,7 @@ setup(
     name='Flask-RestEasy',
     version='0.0.1',
     packages=['flask_resteasy'],
+    package_data={'flask_resteasy': ['templates/*']},
     author='Michael Schenk',
     author_email='',
     description='',
