@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" xmlns="http://www.w3.org/1999/html">
 <head>
 
     <!-- Basic Page Needs
@@ -30,34 +30,15 @@
 <!-- Primary Page Layout
 –––––––––––––––––––––––––––––––––––––––––––––––––– -->
 <div class="container">
-        {% for c in cfgs %}
+        {% for cfg_name, cfg in cfgs|dictsort %}
             <div class="row">
             <div class="eight columns">
-                <h1><a>{{ c }}</a></h1>
-            </div>
-            </div>
-            <div class="row">
-            <div class="four columns">
-                <h5><u>JSON Fields</u></h5>
-                <ul>
-                {% for f in cfgs[c].allowed_from_model %}
-                    <li>{{f}}</li>
-                {% endfor %}
-                {% for r in cfgs[c].allowed_relationships %}
-                    <li>{{r}}</li>
-                {% endfor %}
-                </ul>
-            </div>
-            <div class="four columns">
-                <h5><u>Model Fields</u></h5>
-                <ul>
-                    {% for f in cfgs[c].allowed_to_model %}
-                        <li>{{f}}</li>
-                    {% endfor %}
-                    {% for r in cfgs[c].allowed_relationships %}
-                        <li>{{r}}</li>
-                    {% endfor %}
-                </ul>
+                <h1><a href="{{ url_for(cfg.endpoint_name) }}">{{ cfg_name }}</a></h1>
+                <h5>HTTP Methods -> {{ cfg.http_methods|join(', ') }}</h5>
+                <h5>JSON Allowed To Client</h5>
+                <pre><code>{{ cfg.allowed_to_as_json() }}</code></pre>
+                <h5>JSON Allowed From Client</h5>
+                <pre><code>{{ cfg.allowed_from_as_json() }}</code></pre>
             </div>
             </div>
         {% endfor %}

@@ -5,6 +5,7 @@
 
 """
 import datetime
+import json
 
 from flask import current_app
 
@@ -65,13 +66,11 @@ class APIConfig(object):
          :meth:`flask_resteasy.views.APIManager.register_api` or for all
          endpoints when creating the :class:`flask_resteasy.views.APIManager`.
     """
-    def __init__(self, model_class, excludes, max_per_page):
+    def __init__(self, model_class, excludes, max_per_page, http_methods):
         self._model = model_class
-        # todo should we validate the exclude keys and values?
-        # yes, we need to validate the keys and the value is a list and
-        # where possible validate the items in the list
         self._excludes = excludes
         self._max_per_page = max_per_page
+        self._http_methods = http_methods
 
         # These attributes are set on access because some
         # SQLAlchemy models may not be initialized yet.
@@ -80,6 +79,7 @@ class APIConfig(object):
         self._fields = None
         self._field_types = None
         self._relationship_fields = None
+        self._relationship_types = None
         self._resource_name = None
         self._resource_name_plural = None
         self._allowed_to_model = None
@@ -118,6 +118,12 @@ class APIConfig(object):
         return self._max_per_page
 
     @property
+    def http_methods(self):
+        """ HTTP methods that are available for this model's configuration
+        """
+        return self._http_methods
+
+    @property
     def fields(self):
         """All fields defined for the :attr:`model_class`.
         """
@@ -149,6 +155,12 @@ class APIConfig(object):
         Note this also includes an back refs created from other models.
         """
         return self._get_relationships()
+
+    @property
+    def relationship_types(self):
+        """Relationship types for the :attr:`model_class`
+        """
+        return self._get_relationship_types()
 
     @property
     def allowed_from_model(self):
@@ -313,6 +325,35 @@ class APIConfig(object):
         """
         return self._get_builder_factory()
 
+    def allowed_to_as_json(self):
+        """Returns allowed fields and relationships that are sent to the client
+        for this model's configuration as JSON
+        """
+        return self._model_to_json(self.allowed_from_model,
+                                   self.allowed_relationships)
+
+    def allowed_from_as_json(self):
+        """Returns allowed fields and relationships that are sent from the
+        client for this model's configuration as JSON
+        """
+        return self._model_to_json(self.allowed_to_model,
+                                   self.allowed_relationships)
+
+    def _model_to_json(self, fields, relationships):
+        rv = {}
+        for f in fields:
+            rv[self.json_case(f)] = self.field_types[f]
+
+        for r in relationships:
+            if self.use_link_nodes and self.links_node not in rv:
+                rv[self.linked_node] = {}
+            if self.use_link_nodes:
+                rv[self.linked_node][self.json_case(r)] = \
+                    self.relationship_types[r]
+            else:
+                rv[self.json_case(r)] = self.relationship_types[r]
+        return json.dumps(rv, sort_keys=True, indent=4, separators=(',', ': '))
+
     @staticmethod
     def _get_model_case():
         return lambda s: underscore(s)
@@ -336,6 +377,14 @@ class APIConfig(object):
             self._field_types = {c.name: str(c.type)
                                  for c in self.model_class.__table__.columns}
         return self._field_types
+
+    def _get_relationship_types(self):
+        if self._relationship_types is None:
+            relations = inspect(self.model_class).relationships._data
+            self._relationship_types = {
+                n: relations[n]._dependency_processor.direction.name
+                for n in relations}
+        return self._relationship_types
 
     def _get_relationship_fields(self):
         if self._relationship_fields is None:

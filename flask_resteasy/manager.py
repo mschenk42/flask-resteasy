@@ -246,7 +246,7 @@ class APIManager(object):
             cfg_class = self._cfg_class
 
         # create API configuration object for the model class
-        cfg = cfg_class(model_class, excludes, max_per_page)
+        cfg = cfg_class(model_class, excludes, max_per_page, methods)
 
         # register API configuration object by resource name
         self._register_cfg(cfg, cfg.resource_name)
