@@ -6,6 +6,7 @@
 """
 from flask import render_template
 from flask import Blueprint
+from flask import request
 
 from inflection import singularize
 
@@ -124,7 +125,8 @@ class APIManager(object):
         def resteasy_api():
             """View API information for registered endpoints
             """
-            return render_template('api_info.html', cfgs=self.configs)
+            return render_template('api_info.html', cfgs=self.configs,
+                                   host_url=request.host_url)
 
         if self._app.debug:
             re_bp = Blueprint('resteasy_bp', __name__,
@@ -246,7 +248,7 @@ class APIManager(object):
             cfg_class = self._cfg_class
 
         # create API configuration object for the model class
-        cfg = cfg_class(model_class, excludes, max_per_page)
+        cfg = cfg_class(model_class, excludes, max_per_page, methods)
 
         # register API configuration object by resource name
         self._register_cfg(cfg, cfg.resource_name)
