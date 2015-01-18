@@ -36,7 +36,7 @@
         <div class="row">
             <div class="eight columns">
                 <h1>
-                    <a href="{{ host_url + cfg.resource_name_plural }}">{{ cfg_name }}</a>
+                    <a href="{{ cfg.url_for }}">{{ cfg_name }}</a>
                 </h1>
                 <h5>HTTP Methods -> {{ cfg.http_methods|join(', ') }}</h5>
                 <h5>JSON Allowed To Client</h5>

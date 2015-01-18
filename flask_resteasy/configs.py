@@ -8,6 +8,7 @@ import datetime
 import json
 
 from flask import current_app
+from flask import url_for
 
 from sqlalchemy.inspection import inspect
 
@@ -66,11 +67,13 @@ class APIConfig(object):
          :meth:`flask_resteasy.views.APIManager.register_api` or for all
          endpoints when creating the :class:`flask_resteasy.views.APIManager`.
     """
-    def __init__(self, model_class, excludes, max_per_page, http_methods):
+    def __init__(self, model_class, excludes, max_per_page, http_methods,
+                 bp_name):
         self._model = model_class
         self._excludes = excludes
         self._max_per_page = max_per_page
         self._http_methods = http_methods
+        self._bp_name = bp_name
 
         # These attributes are set on access because some
         # SQLAlchemy models may not be initialized yet.
@@ -324,6 +327,12 @@ class APIConfig(object):
         """Factory used to create builders.
         """
         return self._get_builder_factory()
+
+    @property
+    def url_for(self):
+        endpoint = self._endpoint_name if not self._bp_name else '.'.join(
+            [self._bp_name, self._endpoint_name])
+        return url_for(endpoint)
 
     def allowed_to_as_json(self):
         """Returns allowed fields and relationships that are sent to the client

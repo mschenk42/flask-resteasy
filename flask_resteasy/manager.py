@@ -236,26 +236,6 @@ class APIManager(object):
             api_manager.register_api(StockLevel)
 
         """
-        if methods:
-            methods = set(methods)
-        else:
-            methods = self._methods
-
-        if max_per_page is None:
-            max_per_page = self._max_per_page
-
-        if cfg_class is None:
-            cfg_class = self._cfg_class
-
-        # create API configuration object for the model class
-        cfg = cfg_class(model_class, excludes, max_per_page, methods)
-
-        # register API configuration object by resource name
-        self._register_cfg(cfg, cfg.resource_name)
-
-        # register model class by resource name
-        self._register_model(model_class, cfg.resource_name)
-
         # register with blueprint or application?
         if bp is not None:
             # use blueprint pass into this method
@@ -269,6 +249,27 @@ class APIManager(object):
             # no blueprint, register on the Flask app instance
             has_blueprint = False
             reg_with = self._app
+
+        if methods:
+            methods = set(methods)
+        else:
+            methods = self._methods
+
+        if max_per_page is None:
+            max_per_page = self._max_per_page
+
+        if cfg_class is None:
+            cfg_class = self._cfg_class
+
+        # create API configuration object for the model class
+        cfg = cfg_class(model_class, excludes, max_per_page, methods,
+                        None if not has_blueprint else reg_with.name)
+
+        # register API configuration object by resource name
+        self._register_cfg(cfg, cfg.resource_name)
+
+        # register model class by resource name
+        self._register_model(model_class, cfg.resource_name)
 
         # root resource url, i.e. /products
         url = '/%s' % cfg.resource_name_plural
