@@ -4,7 +4,6 @@
     ~~~~~~~~~~~~~~~~~~~~~~~
 
 """
-from flask import request
 
 
 class ResponseBuilder(object):
@@ -162,12 +161,7 @@ class ResponseBuilder(object):
                                 rp.pager.no_pages_param: rp.pager.no_pages,
                                 rp.pager.per_page_param: rp.pager.per_page}
 
-    @staticmethod
-    def _get_urls_for(resources):
+    def _get_urls_for(self, resources):
         """For a resource return it urls for each id
         """
-        if isinstance(resources, list):
-            rv = ['%s/%s' % (request.url, r.id) for r in resources]
-        else:
-            rv = [('%s/%s' % (request.url, resources.id))]
-        return rv
+        return ['%s/%s' % (self._cfg.url_for, r.id) for r in resources]

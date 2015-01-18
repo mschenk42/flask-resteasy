@@ -6,7 +6,6 @@
 """
 from flask import render_template
 from flask import Blueprint
-from flask import request
 
 from inflection import singularize
 
@@ -125,8 +124,7 @@ class APIManager(object):
         def resteasy_api():
             """View API information for registered endpoints
             """
-            return render_template('api_info.html', cfgs=self.configs,
-                                   host_url=request.host_url)
+            return render_template('api_info.html', cfgs=self.configs)
 
         if self._app.debug:
             re_bp = Blueprint('resteasy_bp', __name__,

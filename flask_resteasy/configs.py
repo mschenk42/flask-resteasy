@@ -330,6 +330,9 @@ class APIConfig(object):
 
     @property
     def url_for(self):
+        """Returns the url for the endpoint taking into account if it was
+        registered with a Blueprint
+        """
         endpoint = self._endpoint_name if not self._bp_name else '.'.join(
             [self._bp_name, self._endpoint_name])
         return url_for(endpoint)
