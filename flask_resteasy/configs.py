@@ -358,9 +358,9 @@ class APIConfig(object):
 
         for r in relationships:
             if self.use_link_nodes and self.links_node not in rv:
-                rv[self.linked_node] = {}
+                rv[self.links_node] = {}
             if self.use_link_nodes:
-                rv[self.linked_node][self.json_case(r)] = \
+                rv[self.links_node][self.json_case(r)] = \
                     self.relationship_types[r]
             else:
                 rv[self.json_case(r)] = self.relationship_types[r]
