@@ -39,9 +39,9 @@
                     <a href="{{ cfg.url_for }}">{{ cfg_name }}</a>
                 </h1>
                 <h5>HTTP Methods -> {{ cfg.http_methods|join(', ') }}</h5>
-                <h5>JSON Allowed To Client</h5>
+                <h5>JSON Allowed From Model</h5>
                 <pre><code>{{ cfg.allowed_to_as_json() }}</code></pre>
-                <h5>JSON Allowed From Client</h5>
+                <h5>JSON Allowed To Model</h5>
                 <pre><code>{{ cfg.allowed_from_as_json() }}</code></pre>
             </div>
         </div>
