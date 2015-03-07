@@ -10,10 +10,11 @@ import unittest
 import json
 
 from flask import Flask
-from flask.ext.sqlalchemy import SQLAlchemy
+from flask_sqlalchemy import SQLAlchemy
 
 from flask_resteasy.manager import APIManager
 from flask_resteasy.configs import EmberConfig
+from flask_resteasy.processors import RequestProcessor
 
 app = None
 db = SQLAlchemy()
@@ -543,6 +544,10 @@ class TestPostRequest(TestAPI):
 
     @classmethod
     def setUpClass(cls):
+        class ClientPostProcess(RequestProcessor):
+            def _process(self):
+                self._resources.append(TestAPI.Client(full_name='Custom Post'))
+
         super(TestPostRequest, cls).setUpClass()
         api_manager = APIManager(app, db)
         api_manager.register_api(TestAPI.Product,
@@ -550,7 +555,10 @@ class TestPostRequest(TestAPI):
         api_manager.register_api(TestAPI.ProductCategory)
         api_manager.register_api(TestAPI.Order, methods=['GET', 'POST'])
         api_manager.register_api(TestAPI.OrderItem)
-        api_manager.register_api(TestAPI.Client)
+        api_manager.register_api(
+            TestAPI.Client,
+            post_process=('action', ClientPostProcess),
+            methods=['POST'])
 
     def test_post_one_to_one(self):
         p_json = {
@@ -603,6 +611,16 @@ class TestPostRequest(TestAPI):
             self.assertTrue(j['order']['order_no'] == "3")
             self.assertTrue(j['order']['links']['order_items'] == [1])
 
+    def test_custom_post(self):
+        p_json = {'action': 'custom post process'}
+
+        with self.client as c:
+            rv = c.post(self.get_url('/clients'), data=json.dumps(p_json),
+                        headers=self.get_headers())
+            self.assertTrue(rv.status_code == 201)
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
+            self.assertTrue(j['client']['full_name'] == 'Custom Post')
+
 
 class TestDeleteRequest(TestAPI):
 
@@ -630,10 +648,16 @@ class TestPutRequest(TestAPI):
 
     @classmethod
     def setUpClass(cls):
+        class ProductPutProcess(RequestProcessor):
+            def _process(self):
+                self._resources.append(
+                    TestAPI.Product(name='Custom Put'))
+
         super(TestPutRequest, cls).setUpClass()
         api_manager = APIManager(app, db)
         api_manager.register_api(TestAPI.Product,
-                                 methods=['GET', 'POST', 'PUT', 'DELETE'])
+                                 methods=['GET', 'POST', 'PUT', 'DELETE'],
+                                 put_process=('action', ProductPutProcess))
         api_manager.register_api(TestAPI.ProductCategory)
 
     def test_put(self):
@@ -660,6 +684,16 @@ class TestPutRequest(TestAPI):
             j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue(j['product']['sku'] == "RLETTUCE")
             self.assertTrue(j['product']['links']['product_category'] == 1)
+
+    def test_custom_put(self):
+        p_json = {'action': 'custom put process'}
+
+        with self.client as c:
+            rv = c.put(self.get_url('/products/2'), data=json.dumps(p_json),
+                       headers=self.get_headers())
+            self.assertTrue(rv.status_code == 200)
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
+            self.assertTrue(j['product']['name'] == 'Custom Put')
 
 
 class TestAllowedDefaultRequestMethods(TestAPI):

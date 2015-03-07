@@ -54,11 +54,19 @@ class ProcessorFactory(object):
         if request.method == 'GET':
             return GetRequestProcessor(cfg, req_par)
         elif request.method == 'POST':
-            return PostRequestProcessor(cfg, req_par)
+            post_process = cfg.api_manager.get_post_process(cfg.resource_name)
+            if post_process and post_process[0] in request.json:
+                return post_process[1](cfg, req_par)
+            else:
+                return PostRequestProcessor(cfg, req_par)
         elif request.method == 'DELETE':
             return DeleteRequestProcessor(cfg, req_par)
         elif request.method == 'PUT':
-            return PutRequestProcessor(cfg, req_par)
+            put_process = cfg.api_manager.get_put_process(cfg.resource_name)
+            if put_process and put_process[0] in request.json:
+                return put_process[1](cfg, req_par)
+            else:
+                return PutRequestProcessor(cfg, req_par)
 
 
 class BuilderFactory(object):

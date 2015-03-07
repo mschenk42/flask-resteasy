@@ -51,6 +51,8 @@ class APIManager(object):
         self._methods = methods
         self._model_for_resources = {}
         self._cfg_for_resources = {}
+        self._post_processes = {}
+        self._put_processes = {}
         self._max_per_page = max_per_page
         if app is not None:
             self.init_app(app, db, cfg_class, decorators,
@@ -177,6 +179,14 @@ class APIManager(object):
         resource_name = singularize(resource_name)
         self._model_for_resources[resource_name] = model_class
 
+    def _register_post_process(self, resource_name, post_process):
+        resource_name = singularize(resource_name)
+        self._post_processes[resource_name] = post_process
+
+    def _register_put_process(self, resource_name, put_process):
+        resource_name = singularize(resource_name)
+        self._put_processes[resource_name] = put_process
+
     def get_excludes_for(self, key):
         """Returns an exclude list for a specific key.
 
@@ -198,8 +208,17 @@ class APIManager(object):
         else:
             return set([])
 
+    def get_post_process(self, resource_name):
+        resource_name = singularize(resource_name)
+        return self._post_processes.get(resource_name, None)
+
+    def get_put_process(self, resource_name):
+        resource_name = singularize(resource_name)
+        return self._put_processes.get(resource_name, None)
+
     def register_api(self, model_class, cfg_class=None, methods=None,
-                     bp=None, excludes=None, max_per_page=None):
+                     bp=None, excludes=None, max_per_page=None,
+                     post_process=None, put_process=None):
         """Registers an API endpoint for a SQLAlchemy model.
 
         :param model_class: class:`flask.ext.sqlalchemy.Model` to registered
@@ -268,6 +287,14 @@ class APIManager(object):
 
         # register model class by resource name
         self._register_model(model_class, cfg.resource_name)
+
+        # register custom post
+        if post_process:
+            self._register_post_process(cfg.resource_name, post_process)
+
+        # register custom put
+        if put_process:
+            self._register_put_process(cfg.resource_name, put_process)
 
         # root resource url, i.e. /products
         url = '/%s' % cfg.resource_name_plural
