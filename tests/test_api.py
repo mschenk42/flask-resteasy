@@ -612,7 +612,7 @@ class TestPostRequest(TestAPI):
             self.assertTrue(j['order']['links']['order_items'] == [1])
 
     def test_custom_post(self):
-        p_json = {'action': 'custom post process'}
+        p_json = {'action': 'ClientPostProcess'}
 
         with self.client as c:
             rv = c.post(self.get_url('/clients'), data=json.dumps(p_json),
@@ -621,6 +621,16 @@ class TestPostRequest(TestAPI):
             j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue(j['client']['full_name'] == 'Custom Post')
 
+    def test_custom_post_does_not_macth(self):
+        p_json = {'action': 'PostProcess'}
+
+        with self.client as c:
+            rv = c.post(self.get_url('/clients'), data=json.dumps(p_json),
+                        headers=self.get_headers())
+            self.assertTrue(rv.status_code == 201)
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
+            self.assertFalse(j['client']['full_name'] == 'Custom Post')
+
 
 class TestDeleteRequest(TestAPI):
 
@@ -628,8 +638,9 @@ class TestDeleteRequest(TestAPI):
     def setUpClass(cls):
         super(TestDeleteRequest, cls).setUpClass()
         api_manager = APIManager(app, db)
-        api_manager.register_api(TestAPI.Product,
-                                 methods=['GET', 'POST', 'PUT', 'DELETE'])
+        api_manager.register_api(
+            TestAPI.Product,
+            methods=['GET', 'POST', 'PUT', 'DELETE'])
 
     def test_delete(self):
 
@@ -686,7 +697,7 @@ class TestPutRequest(TestAPI):
             self.assertTrue(j['product']['links']['product_category'] == 1)
 
     def test_custom_put(self):
-        p_json = {'action': 'custom put process'}
+        p_json = {'action': 'ProductPutProcess'}
 
         with self.client as c:
             rv = c.put(self.get_url('/products/2'), data=json.dumps(p_json),
@@ -694,6 +705,16 @@ class TestPutRequest(TestAPI):
             self.assertTrue(rv.status_code == 200)
             j = json.loads(rv.data.decode(encoding='UTF-8'))
             self.assertTrue(j['product']['name'] == 'Custom Put')
+
+    def test_custom_put_does_not_match(self):
+        p_json = {'action': 'PutProcess'}
+
+        with self.client as c:
+            rv = c.put(self.get_url('/products/2'), data=json.dumps(p_json),
+                       headers=self.get_headers())
+            self.assertTrue(rv.status_code == 200)
+            j = json.loads(rv.data.decode(encoding='UTF-8'))
+            self.assertFalse(j['product']['name'] == 'Custom Put')
 
 
 class TestAllowedDefaultRequestMethods(TestAPI):
