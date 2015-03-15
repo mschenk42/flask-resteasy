@@ -186,7 +186,7 @@ class APIConfig(object):
         """Relationships that are  marshaled to and from the models
         and JSON requests and responses. The default is all relationships.
         """
-        # todo - do we need to break out into allowed_rel_to_model?
+        # TODO - do we need to break out into allowed_rel_to_model?
         # and allow_rel_from_model?
         return self._get_allowed_relationships()
 

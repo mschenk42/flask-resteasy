@@ -86,7 +86,7 @@ class RequestProcessor(object):
                              == self._parser.filter[f])
         if self._parser.sort:
             for col, order in self._parser.sort.items():
-                # todo research why we have to access the col this way
+                # TODO research why we have to access the col this way
                 fld = getattr(getattr(target_class, col), order)()
                 q = q.order_by(fld)
         return q
@@ -167,7 +167,7 @@ class RequestProcessor(object):
                             link_ids,
                             self._cfg.api_manager.get_model(
                                 self._cfg.resource_name_case(j_key)))
-                        # todo will it work if it's lazy=dynamic relationship?
+                        # TODO will it work if it's lazy=dynamic relationship?
                         # I think you can only use append and not extend for
                         # this type of relationship
                         # write a test for this condition
@@ -199,7 +199,7 @@ class GetRequestProcessor(RequestProcessor):
         super(GetRequestProcessor, self).__init__(cfg, request_parser)
 
     def _process(self):
-        # todo, include try catch for database errors?
+        # TODO, include try catch for database errors?
         if self._parser.link:
             target_class = self._cfg.api_manager.get_model(
                 self._cfg.resource_name_case(self._parser.link))
@@ -229,7 +229,7 @@ class GetRequestProcessor(RequestProcessor):
         self._resources.extend(resources)
 
     def _process_includes_for(self, resources):
-        # todo - what if includes are large collections?
+        # TODO - what if includes are large collections?
         if self._parser.include:
             for include in self._parser.include:
                 for resource in resources:
@@ -240,9 +240,9 @@ class GetRequestProcessor(RequestProcessor):
         inc_key = pluralize(inc)
         if inc_key not in self._links:
             self._links[inc_key] = []
-        # todo should we check for duplicates here and
+        # TODO should we check for duplicates here and
         # remove from builder process?
-        # todo if inc is a list will it get loaded by calling
+        # TODO if inc is a list will it get loaded by calling
         # getattr, do we need to limit here what loads or handle
         # this in the builder process?
         self._links[inc_key].append(getattr(resc, inc))
@@ -268,7 +268,7 @@ class PostRequestProcessor(RequestProcessor):
         super(PostRequestProcessor, self).__init__(cfg, request_parser)
 
     def _process(self):
-        # todo - handle many inserts per post
+        # TODO - handle many inserts per post
         json = request.json
         with self._cfg.db.session.no_autoflush:
             model = self._cfg.model_class()
@@ -285,7 +285,7 @@ class PutRequestProcessor(RequestProcessor):
         super(PutRequestProcessor, self).__init__(cfg, request_parser)
 
     def _process(self):
-        # todo - handle many updates per put
+        # TODO - handle many updates per put
         json = request.json
         with self._cfg.db.session.no_autoflush:
             model = self._get_or_404(self._parser.idents[0],
@@ -294,7 +294,7 @@ class PutRequestProcessor(RequestProcessor):
         self._cfg.db.session.add(model)
         self._cfg.db.session.commit()
         self.resources.append(model)
-        # todo - Do we need to only return objects on put if changed by server?
+        # TODO - Do we need to only return objects on put if changed by server?
         # We should only be returning the object(s) added in the response
         # if the server modified what was saved, like for example an updated
         # date set by the server
