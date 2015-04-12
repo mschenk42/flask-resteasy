@@ -66,6 +66,11 @@ class APIConfig(object):
          Exclusions can be set when registering endpoints by calling
          :meth:`flask_resteasy.views.APIManager.register_api` or for all
          endpoints when creating the :class:`flask_resteasy.views.APIManager`.
+
+    :param max_per_page: max number of resource items per page
+    :param http_methods: http methods to register for this resource
+                         [GET, POST, PUT, DELETE]
+    :param bp_name: blueprint name to register resource with
     """
     def __init__(self, model_class, excludes, max_per_page, http_methods,
                  bp_name):

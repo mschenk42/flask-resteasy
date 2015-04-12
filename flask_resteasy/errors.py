@@ -9,7 +9,8 @@ from flask import jsonify
 
 class UnableToProcess(Exception):
     """Exception raised for all error conditions
-    Copied from: http://flask.pocoo.org/docs/0.10/patterns/apierrors/
+    Copied and adpated
+    from: http://flask.pocoo.org/docs/0.10/patterns/apierrors/
     """
     status_code = 400
 
@@ -40,5 +41,4 @@ def handle_errors(error):
         response.status_code = error.status_code
     else:
         response = jsonify({'message': 'Unknown error %s' % error})
-
     return response

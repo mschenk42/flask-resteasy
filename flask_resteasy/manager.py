@@ -23,19 +23,22 @@ class APIManager(object):
 
     :param db: :class:`flask.ext.sqlalchemy.SQLAlchemy` instance
 
-    :param cfg_class: global default configuration class, default is
+    :param cfg_class: default configuration class, default is
                       :class:`flask_resteasy.configs.APIConfig`
 
     :param decorators: list of decorators to
                        apply to all registered HTTP methods
 
-    :param bp: global default Flask Blueprint to register all routes with
+    :param bp: default Flask Blueprint to register all routes with
 
     :param excludes: see `exclude` info in class
                      :class:`flask_resteasy.configs.APIConfig`
 
-    :param methods: global default list of HTTP methods to register
+    :param methods: default list of HTTP methods to register
                     for each endpoint, the default setting is ['GET']
+
+    :param max_per_page: default maximum items returned
+                         per page for a paginated response
 
     :param error_handler: error_handler for UnableToProcess exceptions
     """
@@ -78,15 +81,15 @@ class APIManager(object):
         :param decorators: list of decorators to
                            apply to all registered HTTP methods
 
-        :param bp: global default Flask Blueprint to register all routes with
+        :param bp: default Flask Blueprint to register all routes with
 
         :param excludes: see `exclude` info in class
                          :class:`flask_resteasy.configs.APIConfig`
 
-        :param methods: global default list of HTTP methods to register
+        :param methods: default list of HTTP methods to register
                         for each endpoint, the default setting is ['GET']
 
-        :param max_per_page: global default maximum items returned
+        :param max_per_page: default maximum items returned
                              per page for a paginated response
 
         :param error_handler: error_handler for UnableToProcess exceptions
@@ -240,6 +243,16 @@ class APIManager(object):
 
         :param max_per_page: default maximum items returned per page
                              for a paginated response
+
+        :param post_process: register a custom post process with a tuple
+                             ('action', CustomPostProcess) and to invoke
+                             the process send as part of json payload
+                             {'action': 'CustomPostProcess'}
+
+        :param put_process: register a custom put process with a tuple
+                            ('action', CustomPutProcess) and to invoke
+                            the process send as part of json payload
+                            {'action': 'CustomPutProcess'}
 
         This example registers the models using default settings
         set when initializing the APIManager::

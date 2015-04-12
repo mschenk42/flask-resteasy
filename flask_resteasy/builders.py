@@ -162,6 +162,6 @@ class ResponseBuilder(object):
                                 rp.pager.per_page_param: rp.pager.per_page}
 
     def _get_urls_for(self, resources):
-        """For a resource return it urls for each id
+        """For a resource return its urls for each id
         """
         return ['%s/%s' % (self._cfg.url_for, r.id) for r in resources]
