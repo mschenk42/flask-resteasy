@@ -272,7 +272,11 @@ class PostRequestProcessor(RequestProcessor):
         json = request.json
         with self._cfg.db.session.no_autoflush:
             model = self._cfg.model_class()
-            self._json_to_model(json, model)
+            if isinstance(json, list):
+                for j in json:
+                    self._json_to_model(j, model)
+            else:
+                self._json_to_model(json, model)
         self._cfg.db.session.add(model)
         self._cfg.db.session.commit()
         self._resources.append(model)
